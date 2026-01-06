@@ -693,6 +693,7 @@ class LauncherWindow(QMainWindow):
         from .dialogs import SettingsDialog
 
         def on_save(config):
+            print(f"[DEBUG] on_save aufgerufen: {len(config.projects)} Projekte")
             save_config(config)
             self.show_toast("Einstellungen gespeichert")
 
@@ -710,10 +711,14 @@ class LauncherWindow(QMainWindow):
             if not self.config.sync_path:
                 QMessageBox.warning(self, "Import", "Kein Sync-Ordner konfiguriert")
                 return
+            print(f"[DEBUG] Vor Import: {len(self.config.projects)} Projekte")
             success, msg = import_from_sync(self.config)
+            print(f"[DEBUG] Nach import_from_sync: {len(self.config.projects)} Projekte")
             if success:
-                self.config = load_config()
+                # Config wurde bereits von import_from_sync gespeichert
+                # Nicht erneut laden - das würde die Referenz brechen
                 self._refresh_list()
+                print(f"[DEBUG] Nach refresh: {len(self.config.projects)} Projekte")
                 QMessageBox.information(self, "Import", msg)
             else:
                 QMessageBox.warning(self, "Import", msg)
@@ -724,11 +729,15 @@ class LauncherWindow(QMainWindow):
             on_export=on_export,
             on_import=on_import
         )
+        print(f"[DEBUG] Vor dialog.exec(): {len(self.config.projects)} Projekte")
         if dialog.exec() == QDialog.Accepted:
+            print(f"[DEBUG] Nach dialog.exec(): {len(self.config.projects)} Projekte (vor load)")
             self.config = load_config()
+            print(f"[DEBUG] Nach load_config(): {len(self.config.projects)} Projekte")
             self.process_manager.terminal_cmd = self.config.terminal_command
             self._update_category_filter()
             self._refresh_list()
+            print(f"[DEBUG] Nach _refresh_list(): {len(self.config.projects)} Projekte")
 
 
 def main():
