@@ -20,6 +20,45 @@ from .providers import LLMProvider
 from .process_manager import validate_command
 
 
+def resolve_cloud_path(path: str) -> str:
+    """
+    Konvertiert Cloud-URLs in lokale GVFS-Pfade.
+
+    Unterstützt:
+    - google-drive://user@gmail.com/driveId/folderId
+    - Bereits korrekte Pfade werden unverändert zurückgegeben
+    """
+    if not path:
+        return path
+
+    # Google Drive URL konvertieren
+    if path.startswith("google-drive://"):
+        # Format: google-drive://user@domain/driveId/folderId
+        # GVFS: /run/user/UID/gvfs/google-drive:host=domain,user=user/driveId/folderId
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(path)
+
+            # User und Host extrahieren (user@domain format)
+            if "@" in parsed.netloc:
+                user, host = parsed.netloc.rsplit("@", 1)
+            else:
+                return path  # Unbekanntes Format
+
+            # GVFS-Pfad bauen
+            gvfs_base = f"/run/user/{os.getuid()}/gvfs"
+            gvfs_mount = f"google-drive:host={host},user={user}"
+            gvfs_path = f"{gvfs_base}/{gvfs_mount}{parsed.path}"
+
+            # Prüfen ob Pfad existiert
+            if Path(gvfs_path).exists():
+                return gvfs_path
+        except (ValueError, OSError):
+            pass
+
+    return path
+
+
 # Gemeinsames Stylesheet für Dialoge
 DIALOG_STYLE = """
 QDialog {
@@ -686,7 +725,12 @@ class SettingsDialog(QDialog):
             set_sync_password = None
 
         self.config.local.project_root = self.root_entry.text().strip()
-        self.config.local.sync_path = self.sync_entry.text().strip()
+        # Cloud-URLs automatisch in GVFS-Pfade konvertieren
+        sync_path = resolve_cloud_path(self.sync_entry.text().strip())
+        self.config.local.sync_path = sync_path
+        # Feld aktualisieren falls konvertiert
+        if sync_path != self.sync_entry.text().strip():
+            self.sync_entry.setText(sync_path)
         self.config.local.terminal_command = self.term_entry.text().strip()
         self.config.local.default_start_command = self.start_entry.text().strip()
 
