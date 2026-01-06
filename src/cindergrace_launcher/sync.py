@@ -146,9 +146,45 @@ class SyncManager:
         """Prüft ob Sync konfiguriert ist"""
         return bool(self.sync_path) and bool(self.password)
 
+    def _find_sync_file(self) -> Optional[Path]:
+        """
+        Findet die Sync-Datei im Ordner.
+
+        Prüft zuerst den Standard-Dateinamen, dann sucht nach verschlüsselten
+        Dateien (Fallback für GVFS/Google Drive die Dateinamen ändern).
+        """
+        # Standard-Pfad prüfen
+        if self.sync_file.exists():
+            return self.sync_file
+
+        # GVFS-Fallback: Alle Dateien durchsuchen und versuchen zu entschlüsseln
+        # Google Drive GVFS nutzt File-IDs statt Dateinamen
+        if not self.sync_path.exists():
+            return None
+
+        try:
+            for file_path in self.sync_path.iterdir():
+                if not file_path.is_file():
+                    continue
+                # Nur Dateien mit passender Größe prüfen (min 44 Bytes: salt+nonce+min ciphertext)
+                try:
+                    if file_path.stat().st_size < 44:
+                        continue
+                    # Versuchen zu entschlüsseln
+                    encrypted = file_path.read_bytes()
+                    data = decrypt_data(encrypted, self.password)
+                    if data and 'projects' in data and 'version' in data:
+                        return file_path
+                except (OSError, PermissionError):
+                    continue
+        except OSError:
+            pass
+
+        return None
+
     def sync_file_exists(self) -> bool:
         """Prüft ob Sync-Datei existiert"""
-        return self.sync_file.exists()
+        return self._find_sync_file() is not None
 
     def export_projects(self, projects: list[SyncProject]) -> bool:
         """Exportiert Projekte in verschlüsselte Sync-Datei"""
@@ -178,12 +214,17 @@ class SyncManager:
 
     def import_projects(self) -> Optional[list[SyncProject]]:
         """Importiert Projekte aus verschlüsselter Sync-Datei"""
-        if not self.is_configured() or not self.sync_file_exists():
+        if not self.is_configured():
+            return None
+
+        # Sync-Datei finden (unterstützt GVFS-Fallback)
+        sync_file = self._find_sync_file()
+        if not sync_file:
             return None
 
         try:
             # Lesen und entschlüsseln
-            encrypted = self.sync_file.read_bytes()
+            encrypted = sync_file.read_bytes()
             data = decrypt_data(encrypted, self.password)
 
             if data is None:
