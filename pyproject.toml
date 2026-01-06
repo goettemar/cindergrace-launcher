@@ -56,10 +56,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/SamuelZoworka/cindergrace-launcher"
-Repository = "https://github.com/SamuelZoworka/cindergrace-launcher"
-Documentation = "https://github.com/SamuelZoworka/cindergrace-launcher#readme"
-Issues = "https://github.com/SamuelZoworka/cindergrace-launcher/issues"
+Homepage = "https://github.com/goettemar/cindergrace-launcher"
+Repository = "https://github.com/goettemar/cindergrace-launcher"
+Documentation = "https://github.com/goettemar/cindergrace-launcher#readme"
+Issues = "https://github.com/goettemar/cindergrace-launcher/issues"
 
 [project.scripts]
 cindergrace-launcher = "cindergrace_launcher.main:main"
