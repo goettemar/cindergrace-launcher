@@ -657,10 +657,14 @@ class SettingsDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        close_btn = QPushButton("Schließen")
-        close_btn.setObjectName("primary")
-        close_btn.clicked.connect(self._on_close)
-        button_layout.addWidget(close_btn)
+        cancel_btn = QPushButton("Abbrechen")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+
+        save_btn = QPushButton("Speichern")
+        save_btn.setObjectName("primary")
+        save_btn.clicked.connect(self._on_close)
+        button_layout.addWidget(save_btn)
 
         layout.addLayout(button_layout)
 
