@@ -698,20 +698,25 @@ class LauncherWindow(QMainWindow):
 
         def on_export():
             if not self.config.sync_path:
-                self.show_toast("Kein Sync-Ordner konfiguriert")
+                QMessageBox.warning(self, "Export", "Kein Sync-Ordner konfiguriert")
                 return
             success, msg = export_to_sync(self.config)
-            self.show_toast(msg)
+            if success:
+                QMessageBox.information(self, "Export", msg)
+            else:
+                QMessageBox.warning(self, "Export", msg)
 
         def on_import():
             if not self.config.sync_path:
-                self.show_toast("Kein Sync-Ordner konfiguriert")
+                QMessageBox.warning(self, "Import", "Kein Sync-Ordner konfiguriert")
                 return
             success, msg = import_from_sync(self.config)
             if success:
                 self.config = load_config()
                 self._refresh_list()
-            self.show_toast(msg)
+                QMessageBox.information(self, "Import", msg)
+            else:
+                QMessageBox.warning(self, "Import", msg)
 
         dialog = SettingsDialog(
             self, self.config,
