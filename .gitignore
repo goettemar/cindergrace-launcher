@@ -29,7 +29,7 @@ ENV/
 .env
 .env.*
 
-# KI-Kontext (nicht committen)
+# KI-Kontext (lokal, nicht committen)
 CLAUDE.md
 AGENTS.md
 .ki-faq.json

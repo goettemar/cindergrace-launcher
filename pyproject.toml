@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cindergrace-launcher"
-version = "1.0.0"
-description = "Multi-LLM Projekt-Manager - GTK4/Adwaita GUI für Claude, Codex, Gemini und andere KI-CLIs"
+version = "1.1.0"
+description = "Cindergrace Launcher - Cross-Platform GUI für Claude, Codex, Gemini und andere LLM CLIs"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -19,19 +19,23 @@ keywords = [
     "ai",
     "cli",
     "launcher",
-    "gtk",
+    "qt",
+    "pyside6",
     "claude",
     "codex",
     "gemini",
     "project-manager",
-    "terminal"
+    "terminal",
+    "cross-platform"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Environment :: X11 Applications :: GTK",
+    "Environment :: X11 Applications :: Qt",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: POSIX :: Linux",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -41,7 +45,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "PyGObject>=3.42.0",
+    "PySide6>=6.5.0",
     "cryptography>=41.0.0",
 ]
 
@@ -71,7 +75,7 @@ cindergrace-launcher-gui = "cindergrace_launcher.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-cindergrace_launcher = ["*.css", "*.png", "*.svg"]
+cindergrace_launcher = ["*.css", "*.png", "*.svg", "*.qss"]
 
 [tool.ruff]
 line-length = 120

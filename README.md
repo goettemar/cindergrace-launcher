@@ -1,58 +1,66 @@
-# LLM Cockpit
+# Cindergrace Launcher
 
-Eine GTK4/Adwaita-basierte GUI zur Verwaltung von LLM CLI Sessions für verschiedene Projekte.
+**Cross-Platform GUI zur Verwaltung von LLM CLI Sessions für verschiedene Projekte.**
+
+Basiert auf PySide6 (Qt6) und läuft auf Windows, macOS und Linux.
 
 **Unterstützte LLM CLIs:**
 - Claude Code (Anthropic)
 - Codex CLI (OpenAI)
 - Gemini CLI (Google)
+- Weitere Provider konfigurierbar
 
 ## Features
 
+- **Cross-Platform**: Windows, macOS und Linux
 - **Multi-Provider**: Flexibel zwischen Claude, Codex und Gemini wechseln
 - **Projektverwaltung**: Projekte hinzufügen, bearbeiten und entfernen
 - **Session-Steuerung**: LLM CLI Sessions starten und beenden
 - **Provider-Auswahl**: Beim Start den gewünschten Provider wählen
 - **Status-Anzeige**: Übersicht über laufende Sessions mit Provider-Info
-- **Fenster-Fokus**: Laufende Terminal-Fenster in den Vordergrund bringen
+- **Fenster-Fokus**: Laufende Terminal-Fenster in den Vordergrund bringen (Linux)
 - **Kategorien**: Projekte nach Kategorien organisieren
+- **Sync**: Konfiguration verschlüsselt über Cloud-Dienste synchronisieren
 - **Konfigurierbar**: Terminal-Befehl und CLI-Pfade pro Provider anpassbar
 
 ## Voraussetzungen
 
 - Python 3.10+
-- GTK 4
-- libadwaita
-- gnome-terminal (oder alternatives Terminal)
+- PySide6 (Qt6)
 - Mindestens ein LLM CLI installiert:
   - Claude CLI: `npm install -g @anthropic-ai/claude-code`
   - Codex CLI: `npm install -g @openai/codex`
-  - Gemini CLI: `pip install google-generativeai`
-- wmctrl (optional, für Fenster-Fokus)
-- xdotool (optional, Fallback für Fenster-Fokus)
+  - Gemini CLI: `npm install -g @anthropic/gemini-cli`
 
-### Installation der Abhängigkeiten (Ubuntu/Debian)
+### Linux
 
 ```bash
-sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 wmctrl xdotool
+# Optional für Fenster-Fokus
+sudo apt install wmctrl xdotool
 ```
+
+### Windows
+
+- Windows Terminal empfohlen (automatisch erkannt wenn vorhanden)
+
+### macOS
+
+- Terminal.app wird automatisch verwendet
 
 ## Installation
 
-1. Repository klonen oder herunterladen:
+### Via pip (empfohlen)
+
 ```bash
-git clone <repository-url>
-cd llm-cockpit
+pip install cindergrace-launcher
 ```
 
-2. Startskript ausführbar machen:
-```bash
-chmod +x start.sh
-```
+### Aus Source
 
-3. (Optional) Desktop-Eintrag installieren:
 ```bash
-cp llm-cockpit.desktop ~/.local/share/applications/
+git clone https://github.com/goettemar/cindergrace-launcher
+cd cindergrace-launcher
+pip install -e .
 ```
 
 ## Nutzung
@@ -60,12 +68,17 @@ cp llm-cockpit.desktop ~/.local/share/applications/
 ### Starten
 
 ```bash
-./start.sh
+# Nach pip install
+cindergrace-launcher
+
+# Oder aus dem Projektverzeichnis
+./start.sh       # Linux/macOS
+start.bat        # Windows
 ```
 
 ### Projekte verwalten
 
-- **Hinzufügen**: Klick auf `+` in der Headerbar
+- **Hinzufügen**: Klick auf `+` Button
 - **Bearbeiten**: Klick auf das Stift-Symbol
 - **Entfernen**: Klick auf das Papierkorb-Symbol
 
@@ -73,7 +86,7 @@ cp llm-cockpit.desktop ~/.local/share/applications/
 
 - **Starten**: Play-Symbol - öffnet Dropdown zur Provider-Auswahl
 - **Stoppen**: Stop-Symbol (rot) - nur bei laufenden Sessions
-- **Fokussieren**: Fenster-Symbol - bringt Terminal in den Vordergrund
+- **Fokussieren**: Fenster-Symbol - bringt Terminal in den Vordergrund (Linux)
 
 ### Provider wechseln
 
@@ -83,71 +96,71 @@ Der Provider kann flexibel beim Starten einer Session gewählt werden:
 
 ## Konfiguration
 
-Gespeichert unter: `~/.config/llm-cockpit/config.json`
+Gespeichert unter:
+- Linux: `~/.config/cindergrace-launcher/config.json`
+- Windows: `%APPDATA%/cindergrace-launcher/config.json`
+- macOS: `~/Library/Application Support/cindergrace-launcher/config.json`
 
 ### Allgemeine Einstellungen
 
-| Einstellung     | Standard       |
-|-----------------|----------------|
-| Terminal-Befehl | gnome-terminal |
+| Einstellung     | Standard (Linux)  | Standard (Windows)  |
+|-----------------|-------------------|---------------------|
+| Terminal-Befehl | gnome-terminal    | wt / cmd            |
 
 ### Provider-Einstellungen (pro Provider)
 
 | Einstellung       | Beschreibung                          |
 |-------------------|---------------------------------------|
 | Aktiviert         | Provider in der Auswahl anzeigen      |
-| CLI Pfad          | Pfad zum CLI-Tool                     |
-| Auto-Bestätigung  | Automatische Bestätigung (z.B. --dangerously-skip-permissions) |
+| CLI Befehl        | Pfad/Befehl zum CLI-Tool              |
+| Skip-Flag         | Automatische Bestätigung              |
 
-### Standard-Pfade
+### Standard Provider
 
-| Provider | Standard-Pfad                    | Auto-Flag                         |
-|----------|----------------------------------|-----------------------------------|
-| Claude   | ~/.npm-global/bin/claude         | --dangerously-skip-permissions    |
-| Codex    | codex                            | --full-auto                       |
-| Gemini   | gemini                           | -                                 |
+| Provider | Standard-Befehl              | Auto-Flag                         |
+|----------|------------------------------|-----------------------------------|
+| Claude   | claude                       | --dangerously-skip-permissions    |
+| Codex    | codex                        | --full-auto                       |
+| Gemini   | gemini                       | --yolo                            |
 
 ## Projektstruktur
 
 ```
-llm-cockpit/
-├── src/
-│   ├── main.py            # Einstiegspunkt
-│   ├── cockpit.py         # Hauptfenster und UI
+cindergrace-launcher/
+├── src/cindergrace_launcher/
+│   ├── __init__.py
+│   ├── __main__.py        # python -m Einstieg
+│   ├── main.py            # Qt App Initialisierung
+│   ├── cockpit.py         # Hauptfenster und UI (PySide6)
+│   ├── dialogs.py         # Dialoge (PySide6)
 │   ├── config.py          # Konfigurationsverwaltung
-│   ├── process_manager.py # Session-Verwaltung
+│   ├── sync.py            # Verschlüsselte Sync-Funktion
+│   ├── process_manager.py # Cross-Platform Session-Verwaltung
 │   └── providers.py       # LLM Provider Definitionen
-├── start.sh
-├── llm-cockpit.desktop
+├── start.sh               # Linux/macOS Starter
+├── start.bat              # Windows Starter
+├── pyproject.toml         # Python Package Definition
 └── README.md
 ```
 
-## Migration von Claude Cockpit
+## Sync-Funktion
 
-Beim ersten Start wird die alte Konfiguration aus `~/.config/claude-cockpit/` automatisch migriert.
+Die Konfiguration kann verschlüsselt über Cloud-Dienste (Google Drive, Dropbox, etc.) synchronisiert werden:
 
-## Bekannte Einschränkungen
+1. Sync-Ordner in den Einstellungen konfigurieren
+2. Passwort für Verschlüsselung setzen
+3. "Exportieren" zum Speichern / "Importieren" zum Laden
 
-- Session-Erkennung basiert auf Terminal-PID (nicht immer zuverlässig bei gnome-terminal)
-- Fenster-Fokus erfordert wmctrl oder xdotool (X11)
-- Wayland: Fenster-Fokus funktioniert möglicherweise nicht
+Die Sync-Datei ist AES-256 verschlüsselt.
 
 ## Weitere Provider hinzufügen
 
-Provider sind in `src/providers.py` definiert. Um einen neuen Provider hinzuzufügen:
+Provider sind in `src/cindergrace_launcher/providers.py` definiert. Oder über die Einstellungen der GUI konfigurierbar.
 
-```python
-# In get_default_providers():
-"aider": LLMProvider(
-    id="aider",
-    name="Aider",
-    command="aider",
-    icon="applications-development-symbolic",
-    color="#FF6B6B",
-    skip_permissions_flag="--yes",
-    end_message="Aider beendet"
-),
-```
+## Bekannte Einschränkungen
+
+- **Windows**: Fenster-Fokussierung nicht unterstützt
+- **Wayland**: Fenster-Fokus funktioniert möglicherweise nicht auf Linux
 
 ## Lizenz
 

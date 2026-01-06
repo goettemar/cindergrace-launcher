@@ -1,15 +1,18 @@
 """
-Dialog-Klassen für Cindergrace Launcher
+Dialog-Klassen für Cindergrace Launcher (PySide6 Version)
 Ausgelagert aus cockpit.py für bessere Wartbarkeit
 """
 
-import gi
-gi.require_version('Gtk', '4.0')
-gi.require_version('Adw', '1')
-
-from gi.repository import Gtk, Adw, Gio, GLib
+from PySide6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox,
+    QGroupBox, QScrollArea, QWidget, QFileDialog, QMessageBox,
+    QDialogButtonBox, QFrame
+)
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from pathlib import Path
-from typing import Optional, Callable, List
+from typing import Optional, Callable
 import os
 
 from .config import Config, Project
@@ -17,192 +20,318 @@ from .providers import LLMProvider
 from .process_manager import validate_command
 
 
-class ProjectDialog(Adw.Window):
+# Gemeinsames Stylesheet für Dialoge
+DIALOG_STYLE = """
+QDialog {
+    background-color: #1a1a2e;
+}
+
+QGroupBox {
+    font-weight: bold;
+    color: #e0e0e0;
+    border: 1px solid #333;
+    border-radius: 8px;
+    margin-top: 16px;
+    padding: 15px;
+    padding-top: 25px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 10px;
+    padding: 0 5px;
+    color: #ff6b35;
+}
+
+QLabel {
+    color: #e0e0e0;
+}
+
+QLineEdit {
+    background-color: #2a2a4e;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 8px;
+    color: #e0e0e0;
+}
+
+QLineEdit:focus {
+    border-color: #ff6b35;
+}
+
+QLineEdit:disabled {
+    background-color: #1a1a2e;
+    color: #666;
+}
+
+QComboBox {
+    background-color: #2a2a4e;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 8px;
+    color: #e0e0e0;
+}
+
+QComboBox:focus {
+    border-color: #ff6b35;
+}
+
+QComboBox::drop-down {
+    border: none;
+    padding-right: 10px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #2a2a4e;
+    border: 1px solid #444;
+    color: #e0e0e0;
+    selection-background-color: #ff6b35;
+}
+
+QCheckBox {
+    color: #e0e0e0;
+    spacing: 8px;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid #444;
+    background-color: #2a2a4e;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #ff6b35;
+    border-color: #ff6b35;
+}
+
+QPushButton {
+    background-color: #2a2a4e;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 8px 16px;
+    color: #e0e0e0;
+    min-width: 80px;
+}
+
+QPushButton:hover {
+    background-color: #3a3a5e;
+    border-color: #ff6b35;
+}
+
+QPushButton:pressed {
+    background-color: #ff6b35;
+}
+
+QPushButton#primary {
+    background-color: #ff6b35;
+    border-color: #ff6b35;
+    color: white;
+    font-weight: bold;
+}
+
+QPushButton#primary:hover {
+    background-color: #ff8555;
+}
+
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+
+QScrollArea > QWidget > QWidget {
+    background-color: transparent;
+}
+"""
+
+
+class ProjectDialog(QDialog):
     """Dialog zum Hinzufügen/Bearbeiten eines Projekts"""
 
     def __init__(
         self,
-        parent: Gtk.Window,
+        parent,
         config: Config,
         project: Optional[Project] = None,
         on_save: Optional[Callable[[Project], None]] = None
     ):
-        super().__init__()
+        super().__init__(parent)
         self.config = config
         self.project = project
         self.on_save = on_save
         self.is_edit = project is not None
 
-        self.set_title("Projekt bearbeiten" if self.is_edit else "Neues Projekt")
-        self.set_default_size(500, 550)
-        self.set_modal(True)
-        self.set_transient_for(parent)
+        self.setWindowTitle("Projekt bearbeiten" if self.is_edit else "Neues Projekt")
+        self.setFixedSize(500, 580)
+        self.setModal(True)
+        self.setStyleSheet(DIALOG_STYLE)
 
         self._build_ui()
 
     def _build_ui(self):
-        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.set_content(main_box)
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
 
-        # Header
-        header = Adw.HeaderBar()
-        header.set_show_end_title_buttons(False)
-        header.set_show_start_title_buttons(False)
+        # Scrollbereich
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
 
-        cancel_btn = Gtk.Button(label="Abbrechen")
-        cancel_btn.connect("clicked", lambda b: self.close())
-        header.pack_start(cancel_btn)
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setSpacing(15)
 
-        save_btn = Gtk.Button(label="Speichern")
-        save_btn.add_css_class("suggested-action")
-        save_btn.connect("clicked", self._on_save)
-        header.pack_end(save_btn)
+        # === Name ===
+        name_group = QGroupBox("Projektname")
+        name_layout = QVBoxLayout(name_group)
 
-        main_box.append(header)
-
-        # Scrollable Content
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroll.set_vexpand(True)
-
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=15)
-        content.set_margin_start(20)
-        content.set_margin_end(20)
-        content.set_margin_top(20)
-        content.set_margin_bottom(20)
-
-        # Name
-        name_group = Adw.PreferencesGroup(title="Projektname")
-        self.name_entry = Adw.EntryRow(title="Name")
+        self.name_entry = QLineEdit()
+        self.name_entry.setPlaceholderText("Name des Projekts")
         if self.project:
-            self.name_entry.set_text(self.project.name)
-        name_group.add(self.name_entry)
-        content.append(name_group)
+            self.name_entry.setText(self.project.name)
+        name_layout.addWidget(self.name_entry)
 
-        # Pfad
-        path_group = Adw.PreferencesGroup(title="Projektordner")
+        scroll_layout.addWidget(name_group)
 
-        root_info = Gtk.Label()
-        root_info.set_markup(f'<span size="small" foreground="#888">Projekt-Root: {self.config.project_root}</span>')
-        root_info.set_halign(Gtk.Align.START)
-        root_info.set_margin_start(12)
-        root_info.set_margin_bottom(5)
-        path_group.add(root_info)
+        # === Pfad ===
+        path_group = QGroupBox("Projektordner")
+        path_layout = QVBoxLayout(path_group)
 
-        path_row = Adw.ActionRow(title="Ordner auswählen")
-        self.path_entry = Gtk.Entry()
-        self.path_entry.set_hexpand(True)
-        self.path_entry.set_valign(Gtk.Align.CENTER)
-        self.path_entry.set_placeholder_text("Ordnername (relativ)")
+        # Root-Info
+        root_label = QLabel(f"Projekt-Root: {self.config.project_root}")
+        root_label.setStyleSheet("color: #888; font-size: 11px;")
+        path_layout.addWidget(root_label)
+
+        # Pfad-Zeile
+        path_row = QHBoxLayout()
+        self.path_entry = QLineEdit()
+        self.path_entry.setPlaceholderText("Ordnername (relativ zum Root)")
         if self.project:
-            self.path_entry.set_text(self.project.relative_path)
+            self.path_entry.setText(self.project.relative_path)
+        path_row.addWidget(self.path_entry)
 
-        browse_btn = Gtk.Button(icon_name="folder-open-symbolic")
-        browse_btn.set_valign(Gtk.Align.CENTER)
-        browse_btn.add_css_class("flat")
-        browse_btn.connect("clicked", self._on_browse)
+        browse_btn = QPushButton("📁")
+        browse_btn.setFixedWidth(40)
+        browse_btn.clicked.connect(self._on_browse)
+        path_row.addWidget(browse_btn)
 
-        path_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
-        path_box.append(self.path_entry)
-        path_box.append(browse_btn)
-        path_row.set_child(path_box)
-        path_group.add(path_row)
-        content.append(path_group)
+        path_layout.addLayout(path_row)
+        scroll_layout.addWidget(path_group)
 
-        # Kategorie
-        cat_group = Adw.PreferencesGroup(title="Kategorie (optional)")
-        self.cat_entry = Adw.EntryRow(title="Kategorie")
-        self.cat_entry.set_text(self.project.category if self.project and self.project.category else "")
-        cat_group.add(self.cat_entry)
-        content.append(cat_group)
+        # === Kategorie ===
+        cat_group = QGroupBox("Kategorie (optional)")
+        cat_layout = QVBoxLayout(cat_group)
 
-        # Custom Start Command
-        start_group = Adw.PreferencesGroup(title="Start-Befehl (optional)")
-        self.start_entry = Adw.EntryRow(title="Befehl")
-        self.start_entry.set_text(self.project.custom_start_command if self.project else "")
-        start_group.add(self.start_entry)
+        self.cat_entry = QLineEdit()
+        self.cat_entry.setPlaceholderText("z.B. Python, Web, Tools...")
+        if self.project and self.project.category:
+            self.cat_entry.setText(self.project.category)
+        cat_layout.addWidget(self.cat_entry)
 
-        start_hint = Gtk.Label()
-        start_hint.set_markup(f'<span size="small" foreground="#888">Leer lassen für: {self.config.default_start_command}</span>')
-        start_hint.set_halign(Gtk.Align.START)
-        start_hint.set_margin_start(12)
-        start_group.add(start_hint)
-        content.append(start_group)
+        scroll_layout.addWidget(cat_group)
 
-        # Default Provider
-        provider_group = Adw.PreferencesGroup(title="Standard-Provider")
-        enabled_providers = self.config.get_enabled_providers()
+        # === Start-Befehl ===
+        start_group = QGroupBox("Start-Befehl (optional)")
+        start_layout = QVBoxLayout(start_group)
 
-        self.provider_dropdown = Adw.ComboRow(title="LLM CLI")
-        provider_model = Gtk.StringList()
+        self.start_entry = QLineEdit()
+        self.start_entry.setPlaceholderText("Eigener Startbefehl...")
+        if self.project and self.project.custom_start_command:
+            self.start_entry.setText(self.project.custom_start_command)
+        start_layout.addWidget(self.start_entry)
+
+        hint_label = QLabel(f"Leer lassen für: {self.config.default_start_command}")
+        hint_label.setStyleSheet("color: #888; font-size: 11px;")
+        start_layout.addWidget(hint_label)
+
+        scroll_layout.addWidget(start_group)
+
+        # === Provider ===
+        provider_group = QGroupBox("Standard-Provider")
+        provider_layout = QVBoxLayout(provider_group)
+
+        self.provider_dropdown = QComboBox()
         self.provider_ids = []
+        enabled_providers = self.config.get_enabled_providers()
         selected_idx = 0
 
         for i, p in enumerate(enabled_providers):
-            provider_model.append(p.name)
+            self.provider_dropdown.addItem(p.name)
             self.provider_ids.append(p.id)
             if self.project and self.project.default_provider == p.id:
                 selected_idx = i
             elif not self.project and p.id == self.config.last_provider:
                 selected_idx = i
 
-        self.provider_dropdown.set_model(provider_model)
-        self.provider_dropdown.set_selected(selected_idx)
-        provider_group.add(self.provider_dropdown)
-        content.append(provider_group)
+        self.provider_dropdown.setCurrentIndex(selected_idx)
+        provider_layout.addWidget(self.provider_dropdown)
 
-        scroll.set_child(content)
-        main_box.append(scroll)
+        scroll_layout.addWidget(provider_group)
 
-    def _on_browse(self, btn):
-        file_dialog = Gtk.FileDialog()
-        file_dialog.set_title("Projektordner auswählen")
+        # Spacer
+        scroll_layout.addStretch()
 
-        if self.config.project_root and os.path.isdir(self.config.project_root):
-            file_dialog.set_initial_folder(Gio.File.new_for_path(self.config.project_root))
-        else:
-            file_dialog.set_initial_folder(Gio.File.new_for_path(str(Path.home())))
+        scroll.setWidget(scroll_widget)
+        layout.addWidget(scroll)
 
-        file_dialog.select_folder(self, None, self._on_folder_selected)
+        # === Buttons ===
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
 
-    def _on_folder_selected(self, dialog, result):
-        try:
-            folder = dialog.select_folder_finish(result)
-            if folder:
-                selected_path = folder.get_path()
-                # Relativen Pfad zum project_root berechnen
-                if self.config.project_root and selected_path.startswith(self.config.project_root):
-                    relative = os.path.relpath(selected_path, self.config.project_root)
-                    self.path_entry.set_text(relative)
-                else:
-                    # Außerhalb des project_root - nur Ordnername verwenden
-                    self.path_entry.set_text(Path(selected_path).name)
-        except GLib.Error:
-            # Dialog wurde abgebrochen oder Fehler bei Ordnerauswahl
-            pass
+        cancel_btn = QPushButton("Abbrechen")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
 
-    def _on_save(self, btn):
-        name = self.name_entry.get_text().strip()
-        relative_path = self.path_entry.get_text().strip()
-        category = self.cat_entry.get_text().strip() or "Allgemein"
-        start_cmd = self.start_entry.get_text().strip()
+        save_btn = QPushButton("Speichern")
+        save_btn.setObjectName("primary")
+        save_btn.clicked.connect(self._on_save)
+        button_layout.addWidget(save_btn)
+
+        layout.addLayout(button_layout)
+
+    def _on_browse(self):
+        start_dir = self.config.project_root if self.config.project_root and os.path.isdir(self.config.project_root) else str(Path.home())
+
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Projektordner auswählen",
+            start_dir,
+            QFileDialog.Option.ShowDirsOnly
+        )
+
+        if folder:
+            # Relativen Pfad berechnen
+            if self.config.project_root and folder.startswith(self.config.project_root):
+                relative = os.path.relpath(folder, self.config.project_root)
+                self.path_entry.setText(relative)
+            else:
+                self.path_entry.setText(Path(folder).name)
+
+    def _on_save(self):
+        name = self.name_entry.text().strip()
+        relative_path = self.path_entry.text().strip()
+        category = self.cat_entry.text().strip() or "Allgemein"
+        start_cmd = self.start_entry.text().strip()
 
         if not name:
-            self._show_error("Bitte einen Namen eingeben")
+            QMessageBox.warning(self, "Fehler", "Bitte einen Namen eingeben")
             return
 
         if not relative_path:
-            self._show_error("Bitte einen Ordner auswählen")
+            QMessageBox.warning(self, "Fehler", "Bitte einen Ordner auswählen")
             return
 
         # SECURITY: Start-Befehl validieren
         if start_cmd:
             is_valid, error = validate_command(start_cmd)
             if not is_valid:
-                self._show_error(f"Ungültiger Start-Befehl: {error}")
+                QMessageBox.warning(self, "Fehler", f"Ungültiger Start-Befehl: {error}")
                 return
 
-        selected_idx = self.provider_dropdown.get_selected()
+        selected_idx = self.provider_dropdown.currentIndex()
         provider_id = self.provider_ids[selected_idx] if selected_idx < len(self.provider_ids) else "claude"
 
         new_project = Project(
@@ -219,302 +348,365 @@ class ProjectDialog(Adw.Window):
         if self.on_save:
             self.on_save(new_project)
 
-        self.close()
-
-    def _show_error(self, message: str):
-        toast = Adw.Toast(title=message)
-        toast.set_timeout(3)
-        # Find toast overlay in parent
-        parent = self.get_transient_for()
-        if hasattr(parent, 'toast_overlay'):
-            parent.toast_overlay.add_toast(toast)
+        self.accept()
 
 
-class ProviderDialog(Adw.Window):
+class ProviderDialog(QDialog):
     """Dialog zum Hinzufügen/Bearbeiten eines Providers"""
 
     def __init__(
         self,
-        parent: Gtk.Window,
+        parent,
         provider: Optional[LLMProvider] = None,
         on_save: Optional[Callable[[LLMProvider], None]] = None
     ):
-        super().__init__()
+        super().__init__(parent)
         self.provider = provider
         self.on_save = on_save
         self.is_edit = provider is not None
 
-        self.set_title("Provider bearbeiten" if self.is_edit else "Neuer Provider")
-        self.set_default_size(450, 550)
-        self.set_modal(True)
-        self.set_transient_for(parent)
+        self.setWindowTitle("Provider bearbeiten" if self.is_edit else "Neuer Provider")
+        self.setFixedSize(450, 550)
+        self.setModal(True)
+        self.setStyleSheet(DIALOG_STYLE)
 
         self._build_ui()
 
     def _build_ui(self):
-        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.set_content(main_box)
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
 
-        # Header
-        header = Adw.HeaderBar()
-        header.set_show_end_title_buttons(False)
-        header.set_show_start_title_buttons(False)
+        # Scrollbereich
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
 
-        cancel_btn = Gtk.Button(label="Abbrechen")
-        cancel_btn.connect("clicked", lambda b: self.close())
-        header.pack_start(cancel_btn)
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setSpacing(15)
 
-        save_btn = Gtk.Button(label="Speichern")
-        save_btn.add_css_class("suggested-action")
-        save_btn.connect("clicked", self._on_save)
-        header.pack_end(save_btn)
+        # === Grundeinstellungen ===
+        basic_group = QGroupBox("Grundeinstellungen")
+        basic_layout = QGridLayout(basic_group)
+        basic_layout.setSpacing(10)
 
-        main_box.append(header)
-
-        # Scrollable Content
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroll.set_vexpand(True)
-
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=15)
-        content.set_margin_start(20)
-        content.set_margin_end(20)
-        content.set_margin_top(20)
-        content.set_margin_bottom(20)
-
-        # Basis-Infos
-        basic_group = Adw.PreferencesGroup(title="Grundeinstellungen")
-
-        self.id_entry = Adw.EntryRow(title="ID (eindeutig)")
-        self.id_entry.set_text(self.provider.id if self.provider else "")
+        basic_layout.addWidget(QLabel("ID (eindeutig):"), 0, 0)
+        self.id_entry = QLineEdit()
+        self.id_entry.setText(self.provider.id if self.provider else "")
         if self.is_edit:
-            self.id_entry.set_sensitive(False)
-        basic_group.add(self.id_entry)
+            self.id_entry.setEnabled(False)
+        basic_layout.addWidget(self.id_entry, 0, 1)
 
-        self.name_entry = Adw.EntryRow(title="Anzeigename")
-        self.name_entry.set_text(self.provider.name if self.provider else "")
-        basic_group.add(self.name_entry)
+        basic_layout.addWidget(QLabel("Anzeigename:"), 1, 0)
+        self.name_entry = QLineEdit()
+        self.name_entry.setText(self.provider.name if self.provider else "")
+        basic_layout.addWidget(self.name_entry, 1, 1)
 
-        content.append(basic_group)
+        scroll_layout.addWidget(basic_group)
 
-        # Befehl
-        cmd_group = Adw.PreferencesGroup(title="Befehl")
+        # === Befehl ===
+        cmd_group = QGroupBox("Befehl")
+        cmd_layout = QGridLayout(cmd_group)
+        cmd_layout.setSpacing(10)
 
-        self.cmd_entry = Adw.EntryRow(title="CLI-Befehl")
-        self.cmd_entry.set_text(self.provider.command if self.provider else "")
-        cmd_group.add(self.cmd_entry)
+        cmd_layout.addWidget(QLabel("CLI-Befehl:"), 0, 0)
+        self.cmd_entry = QLineEdit()
+        self.cmd_entry.setText(self.provider.command if self.provider else "")
+        cmd_layout.addWidget(self.cmd_entry, 0, 1)
 
-        self.skip_flag_entry = Adw.EntryRow(title="Skip-Permissions Flag")
-        self.skip_flag_entry.set_text(self.provider.skip_permissions_flag if self.provider else "")
-        cmd_group.add(self.skip_flag_entry)
+        cmd_layout.addWidget(QLabel("Skip-Permissions Flag:"), 1, 0)
+        self.skip_flag_entry = QLineEdit()
+        self.skip_flag_entry.setText(self.provider.skip_permissions_flag if self.provider else "")
+        cmd_layout.addWidget(self.skip_flag_entry, 1, 1)
 
-        content.append(cmd_group)
+        scroll_layout.addWidget(cmd_group)
 
-        # UI
-        ui_group = Adw.PreferencesGroup(title="Darstellung")
+        # === Darstellung ===
+        ui_group = QGroupBox("Darstellung")
+        ui_layout = QGridLayout(ui_group)
+        ui_layout.setSpacing(10)
 
-        self.icon_entry = Adw.EntryRow(title="Icon-Name")
-        self.icon_entry.set_text(self.provider.icon if self.provider else "utilities-terminal-symbolic")
-        ui_group.add(self.icon_entry)
+        ui_layout.addWidget(QLabel("Icon-Name:"), 0, 0)
+        self.icon_entry = QLineEdit()
+        self.icon_entry.setText(self.provider.icon if self.provider else "🤖")
+        ui_layout.addWidget(self.icon_entry, 0, 1)
 
-        self.color_entry = Adw.EntryRow(title="CSS Farbe")
-        self.color_entry.set_text(self.provider.color if self.provider else "#666666")
-        ui_group.add(self.color_entry)
+        ui_layout.addWidget(QLabel("CSS Farbe:"), 1, 0)
+        self.color_entry = QLineEdit()
+        self.color_entry.setText(self.provider.color if self.provider else "#666666")
+        ui_layout.addWidget(self.color_entry, 1, 1)
 
-        content.append(ui_group)
+        scroll_layout.addWidget(ui_group)
 
-        # Status
-        status_group = Adw.PreferencesGroup(title="Status")
+        # === Status ===
+        status_group = QGroupBox("Status")
+        status_layout = QVBoxLayout(status_group)
 
-        self.enabled_switch = Adw.SwitchRow(title="Aktiviert")
-        self.enabled_switch.set_active(self.provider.enabled if self.provider else True)
-        status_group.add(self.enabled_switch)
+        self.enabled_switch = QCheckBox("Aktiviert")
+        self.enabled_switch.setChecked(self.provider.enabled if self.provider else True)
+        status_layout.addWidget(self.enabled_switch)
 
-        content.append(status_group)
+        scroll_layout.addWidget(status_group)
 
-        scroll.set_child(content)
-        main_box.append(scroll)
+        # Spacer
+        scroll_layout.addStretch()
 
-    def _on_save(self, btn):
-        provider_id = self.id_entry.get_text().strip()
-        name = self.name_entry.get_text().strip()
-        command = self.cmd_entry.get_text().strip()
+        scroll.setWidget(scroll_widget)
+        layout.addWidget(scroll)
+
+        # === Buttons ===
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        cancel_btn = QPushButton("Abbrechen")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+
+        save_btn = QPushButton("Speichern")
+        save_btn.setObjectName("primary")
+        save_btn.clicked.connect(self._on_save)
+        button_layout.addWidget(save_btn)
+
+        layout.addLayout(button_layout)
+
+    def _on_save(self):
+        provider_id = self.id_entry.text().strip()
+        name = self.name_entry.text().strip()
+        command = self.cmd_entry.text().strip()
 
         if not provider_id:
+            QMessageBox.warning(self, "Fehler", "Bitte eine ID eingeben")
             return
         if not name:
+            QMessageBox.warning(self, "Fehler", "Bitte einen Namen eingeben")
             return
         if not command:
+            QMessageBox.warning(self, "Fehler", "Bitte einen Befehl eingeben")
             return
 
         # SECURITY: Befehle validieren
         is_valid, error = validate_command(command)
         if not is_valid:
+            QMessageBox.warning(self, "Fehler", f"Ungültiger Befehl: {error}")
             return
 
-        skip_flag = self.skip_flag_entry.get_text().strip()
+        skip_flag = self.skip_flag_entry.text().strip()
         if skip_flag:
             is_valid, error = validate_command(skip_flag)
             if not is_valid:
+                QMessageBox.warning(self, "Fehler", f"Ungültiges Flag: {error}")
                 return
 
         new_provider = LLMProvider(
             id=provider_id,
             name=name,
             command=command,
-            icon=self.icon_entry.get_text().strip() or "utilities-terminal-symbolic",
-            color=self.color_entry.get_text().strip() or "#666666",
-            enabled=self.enabled_switch.get_active(),
+            icon=self.icon_entry.text().strip() or "🤖",
+            color=self.color_entry.text().strip() or "#666666",
+            enabled=self.enabled_switch.isChecked(),
             skip_permissions_flag=skip_flag
         )
 
         if self.on_save:
             self.on_save(new_provider)
 
-        self.close()
+        self.accept()
 
 
-class SettingsDialog(Adw.Window):
+class SettingsDialog(QDialog):
     """Einstellungs-Dialog"""
 
     def __init__(
         self,
-        parent: Gtk.Window,
+        parent,
         config: Config,
         on_save: Optional[Callable[[Config], None]] = None,
         on_export: Optional[Callable[[], None]] = None,
         on_import: Optional[Callable[[], None]] = None
     ):
-        super().__init__()
+        super().__init__(parent)
         self.config = config
         self.on_save = on_save
         self.on_export_callback = on_export
         self.on_import_callback = on_import
 
-        self.set_title("Einstellungen")
-        self.set_default_size(650, 750)
-        self.set_modal(True)
-        self.set_transient_for(parent)
+        self.setWindowTitle("Einstellungen")
+        self.setFixedSize(600, 650)
+        self.setModal(True)
+        self.setStyleSheet(DIALOG_STYLE)
 
         self._build_ui()
 
     def _build_ui(self):
-        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.set_content(main_box)
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
 
-        # Header
-        header = Adw.HeaderBar()
-        header.set_show_end_title_buttons(False)
-        header.set_show_start_title_buttons(False)
+        # Scrollbereich
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
 
-        close_btn = Gtk.Button(label="Schließen")
-        close_btn.add_css_class("suggested-action")
-        close_btn.connect("clicked", self._on_close)
-        header.pack_end(close_btn)
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setSpacing(15)
 
-        main_box.append(header)
+        # === Pfade ===
+        paths_group = QGroupBox("Pfade")
+        paths_layout = QGridLayout(paths_group)
+        paths_layout.setSpacing(10)
 
-        # Scrollable Content
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroll.set_vexpand(True)
+        paths_layout.addWidget(QLabel("Projekt-Root:"), 0, 0)
+        self.root_entry = QLineEdit()
+        self.root_entry.setText(self.config.project_root)
+        paths_layout.addWidget(self.root_entry, 0, 1)
 
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
-        content.set_margin_start(20)
-        content.set_margin_end(20)
-        content.set_margin_top(20)
-        content.set_margin_bottom(20)
+        root_browse = QPushButton("📁")
+        root_browse.setFixedWidth(40)
+        root_browse.clicked.connect(lambda: self._browse_folder(self.root_entry))
+        paths_layout.addWidget(root_browse, 0, 2)
 
-        # Pfade
-        paths_group = Adw.PreferencesGroup(title="Pfade")
+        paths_layout.addWidget(QLabel("Sync-Ordner:"), 1, 0)
+        self.sync_entry = QLineEdit()
+        self.sync_entry.setText(self.config.sync_path)
+        self.sync_entry.setPlaceholderText("Google Drive, Dropbox etc.")
+        paths_layout.addWidget(self.sync_entry, 1, 1)
 
-        self.root_entry = Adw.EntryRow(title="Projekt-Root")
-        self.root_entry.set_text(self.config.project_root)
-        paths_group.add(self.root_entry)
+        sync_browse = QPushButton("📁")
+        sync_browse.setFixedWidth(40)
+        sync_browse.clicked.connect(lambda: self._browse_folder(self.sync_entry))
+        paths_layout.addWidget(sync_browse, 1, 2)
 
-        self.sync_entry = Adw.EntryRow(title="Sync-Ordner (Google Drive etc.)")
-        self.sync_entry.set_text(self.config.sync_path)
-        paths_group.add(self.sync_entry)
+        scroll_layout.addWidget(paths_group)
 
-        content.append(paths_group)
+        # === Terminal ===
+        term_group = QGroupBox("Terminal")
+        term_layout = QGridLayout(term_group)
+        term_layout.setSpacing(10)
 
-        # Terminal
-        term_group = Adw.PreferencesGroup(title="Terminal")
+        term_layout.addWidget(QLabel("Terminal-Befehl:"), 0, 0)
+        self.term_entry = QLineEdit()
+        self.term_entry.setText(self.config.terminal_command)
+        term_layout.addWidget(self.term_entry, 0, 1)
 
-        self.term_entry = Adw.EntryRow(title="Terminal-Befehl")
-        self.term_entry.set_text(self.config.terminal_command)
-        term_group.add(self.term_entry)
+        term_layout.addWidget(QLabel("Standard Start-Befehl:"), 1, 0)
+        self.start_entry = QLineEdit()
+        self.start_entry.setText(self.config.default_start_command)
+        term_layout.addWidget(self.start_entry, 1, 1)
 
-        self.start_entry = Adw.EntryRow(title="Standard Start-Befehl")
-        self.start_entry.set_text(self.config.default_start_command)
-        term_group.add(self.start_entry)
+        scroll_layout.addWidget(term_group)
 
-        content.append(term_group)
+        # === Sync ===
+        sync_group = QGroupBox("Sync-Einstellungen")
+        sync_layout = QVBoxLayout(sync_group)
 
-        # Sync
-        from config import get_sync_password, set_sync_password
+        # Passwort
+        pw_layout = QHBoxLayout()
+        pw_layout.addWidget(QLabel("Sync-Passwort:"))
+        self.password_entry = QLineEdit()
+        self.password_entry.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password_entry.setPlaceholderText("Verschlüsselungs-Passwort")
 
-        sync_group = Adw.PreferencesGroup(title="Sync")
+        # Passwort NICHT anzeigen (Sicherheit) - nur Placeholder wenn gesetzt
+        try:
+            from .config import get_sync_password
+            current_pw = get_sync_password()
+            if current_pw:
+                self.password_entry.setPlaceholderText("••••••••  (bereits gesetzt)")
+        except (ImportError, OSError, KeyError, TypeError, ValueError):
+            pass
 
-        self.password_entry = Adw.PasswordEntryRow(title="Sync-Passwort")
-        current_pw = get_sync_password()
-        if current_pw:
-            self.password_entry.set_text(current_pw)
-        sync_group.add(self.password_entry)
+        pw_layout.addWidget(self.password_entry)
+        sync_layout.addLayout(pw_layout)
 
-        sync_buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        sync_buttons.set_margin_top(10)
+        # Export/Import Buttons
+        sync_buttons = QHBoxLayout()
+        sync_buttons.addStretch()
 
-        export_btn = Gtk.Button(label="Exportieren")
-        export_btn.add_css_class("suggested-action")
-        export_btn.connect("clicked", self._on_export)
-        sync_buttons.append(export_btn)
+        export_btn = QPushButton("Exportieren")
+        export_btn.setObjectName("primary")
+        export_btn.clicked.connect(self._on_export)
+        sync_buttons.addWidget(export_btn)
 
-        import_btn = Gtk.Button(label="Importieren")
-        import_btn.connect("clicked", self._on_import)
-        sync_buttons.append(import_btn)
+        import_btn = QPushButton("Importieren")
+        import_btn.clicked.connect(self._on_import)
+        sync_buttons.addWidget(import_btn)
 
-        sync_group.add(sync_buttons)
-        content.append(sync_group)
+        sync_layout.addLayout(sync_buttons)
+        scroll_layout.addWidget(sync_group)
 
-        # Provider (simplified - just count)
-        provider_group = Adw.PreferencesGroup(title="LLM Provider")
+        # === Provider Info ===
+        provider_group = QGroupBox("LLM Provider")
+        provider_layout = QVBoxLayout(provider_group)
 
-        provider_info = Adw.ActionRow(title="Konfigurierte Provider")
-        provider_info.set_subtitle(f"{len(self.config.providers)} Provider konfiguriert")
-        provider_group.add(provider_info)
+        provider_count = len(self.config.providers)
+        enabled_count = len([p for p in self.config.providers if p.enabled])
+        provider_label = QLabel(f"{provider_count} Provider konfiguriert ({enabled_count} aktiviert)")
+        provider_layout.addWidget(provider_label)
 
-        content.append(provider_group)
+        scroll_layout.addWidget(provider_group)
 
-        scroll.set_child(content)
-        main_box.append(scroll)
+        # Spacer
+        scroll_layout.addStretch()
+
+        scroll.setWidget(scroll_widget)
+        layout.addWidget(scroll)
+
+        # === Buttons ===
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        close_btn = QPushButton("Schließen")
+        close_btn.setObjectName("primary")
+        close_btn.clicked.connect(self._on_close)
+        button_layout.addWidget(close_btn)
+
+        layout.addLayout(button_layout)
+
+    def _browse_folder(self, target_entry: QLineEdit):
+        current = target_entry.text() or str(Path.home())
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Ordner auswählen",
+            current,
+            QFileDialog.Option.ShowDirsOnly
+        )
+        if folder:
+            target_entry.setText(folder)
 
     def _save_settings(self):
-        from config import set_sync_password
+        try:
+            from .config import set_sync_password
+        except ImportError:
+            set_sync_password = None
 
-        self.config.local.project_root = self.root_entry.get_text().strip()
-        self.config.local.sync_path = self.sync_entry.get_text().strip()
-        self.config.local.terminal_command = self.term_entry.get_text().strip()
-        self.config.local.default_start_command = self.start_entry.get_text().strip()
+        self.config.local.project_root = self.root_entry.text().strip()
+        self.config.local.sync_path = self.sync_entry.text().strip()
+        self.config.local.terminal_command = self.term_entry.text().strip()
+        self.config.local.default_start_command = self.start_entry.text().strip()
 
-        # Passwort speichern
-        password = self.password_entry.get_text()
-        if password:
-            set_sync_password(password)
+        # Passwort nur speichern wenn neu eingegeben (nicht leer = Placeholder)
+        password = self.password_entry.text()
+        if password and password.strip() and set_sync_password:
+            try:
+                set_sync_password(password)
+            except (OSError, TypeError, ValueError):
+                pass
 
         if self.on_save:
             self.on_save(self.config)
 
-    def _on_export(self, btn):
+    def _on_export(self):
         self._save_settings()
         if self.on_export_callback:
             self.on_export_callback()
 
-    def _on_import(self, btn):
+    def _on_import(self):
         self._save_settings()
         if self.on_import_callback:
             self.on_import_callback()
 
-    def _on_close(self, btn):
+    def _on_close(self):
         self._save_settings()
-        self.close()
+        self.accept()

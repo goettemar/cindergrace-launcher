@@ -1,20 +1,21 @@
 """
-Cindergrace Launcher - Multi-LLM Projekt-Manager
+Cindergrace Launcher - LLM CLI Session Manager
 
-GTK4/Adwaita-basierte GUI zur Verwaltung von LLM CLI Sessions.
+PySide6/Qt6-basierte GUI zur Verwaltung von LLM CLI Sessions.
 Unterstützt Claude, Codex, Gemini und andere konfigurierbare Provider.
+
+Cross-Platform: Windows, macOS, Linux
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Cindergrace Team"
 
-from .cockpit import LauncherApp, LauncherWindow
+from .cockpit import LauncherWindow
 from .config import Config, Project, load_config, save_config
 from .process_manager import ProcessManager
 from .providers import LLMProvider
 
 __all__ = [
-    "LauncherApp",
     "LauncherWindow",
     "Config",
     "Project",
