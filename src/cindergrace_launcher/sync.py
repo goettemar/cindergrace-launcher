@@ -4,26 +4,29 @@ AES-verschlüsselte Synchronisation von Projektdaten
 """
 
 import json
-import os
-import hashlib
 import secrets
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, asdict
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
 
 SYNC_FILENAME = "launcher_sync.enc"
 SALT_SIZE = 16
 NONCE_SIZE = 12
+KDF_ITERATIONS = 100000
 
 
 def derive_key(password: str, salt: bytes) -> bytes:
-    """Leitet einen 256-bit AES-Key vom Passwort ab (PBKDF2-ähnlich)"""
-    # Einfache aber sichere Key-Ableitung mit mehreren Runden
-    key = password.encode('utf-8') + salt
-    for _ in range(100000):  # 100k Iterationen
-        key = hashlib.sha256(key).digest()
-    return key
+    """Leitet einen 256-bit AES-Key vom Passwort ab (PBKDF2HMAC)"""
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=KDF_ITERATIONS,
+    )
+    return kdf.derive(password.encode('utf-8'))
 
 
 def encrypt_data(data: dict, password: str) -> bytes:

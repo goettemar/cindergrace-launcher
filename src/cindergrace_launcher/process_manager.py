@@ -15,23 +15,31 @@ import time
 
 from .providers import LLMProvider
 
-# Gefährliche Shell-Zeichen die in Befehlen nicht erlaubt sind
-DANGEROUS_CHARS = set(';|&`$(){}[]<>\\"\'\n\r')
+# Gefährliche Shell-Zeichen die Command Injection ermöglichen
+INJECTION_CHARS = set(';|&`$(){}<>\n\r')
 
 
 def validate_command(cmd: str) -> Tuple[bool, str]:
     """
     Validiert einen Befehl auf gefährliche Shell-Zeichen.
+    Erlaubt Windows-Pfade (Backslash) und gequotete Pfade (für Leerzeichen).
     Returns: (is_valid, error_message)
     """
     if not cmd or not cmd.strip():
         return False, "Befehl ist leer"
 
-    # Erlaube nur alphanumerische Zeichen, Leerzeichen, Bindestriche, Unterstriche, Punkte, Schrägstriche
-    # und das Gleichheitszeichen (für Flags wie --flag=value)
-    dangerous_found = [c for c in cmd if c in DANGEROUS_CHARS]
-    if dangerous_found:
-        return False, f"Ungültige Zeichen im Befehl: {set(dangerous_found)}"
+    # Prüfe auf Command-Injection-Zeichen (Shell-Operatoren)
+    injection_found = [c for c in cmd if c in INJECTION_CHARS]
+    if injection_found:
+        return False, f"Ungültige Zeichen im Befehl: {set(injection_found)}"
+
+    # Prüfe auf unbalancierte Quotes (potentielle Injection)
+    single_quotes = cmd.count("'")
+    double_quotes = cmd.count('"')
+    if single_quotes % 2 != 0:
+        return False, "Unbalancierte einfache Anführungszeichen"
+    if double_quotes % 2 != 0:
+        return False, "Unbalancierte doppelte Anführungszeichen"
 
     return True, ""
 
@@ -135,6 +143,7 @@ class ProcessManager:
         provider_id: str,
         provider_command: str,
         provider_name: str = "",
+        default_flags: str = "",
         skip_permissions_flag: str = "",
         on_window_found: Optional[Callable[[str], None]] = None
     ) -> Tuple[bool, str]:
@@ -164,6 +173,11 @@ class ProcessManager:
         if not is_valid:
             return False, f"Ungültiger Provider-Befehl: {error}"
 
+        if default_flags:
+            is_valid, error = validate_command(default_flags)
+            if not is_valid:
+                return False, f"Ungültige Default-Flags: {error}"
+
         if skip_permissions_flag:
             is_valid, error = validate_command(skip_permissions_flag)
             if not is_valid:
@@ -172,6 +186,8 @@ class ProcessManager:
         try:
             # Vollständigen Befehl zusammenbauen (sicher, da validiert)
             full_cmd = provider_command
+            if default_flags:
+                full_cmd += f" {default_flags}"
             if skip_permissions_flag:
                 full_cmd += f" {skip_permissions_flag}"
 

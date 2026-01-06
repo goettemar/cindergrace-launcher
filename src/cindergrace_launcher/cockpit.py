@@ -597,7 +597,7 @@ class LauncherWindow(QMainWindow):
 
         success, message = self.process_manager.start_session(
             path, name, provider_id, provider.command,
-            provider.name, provider.skip_permissions_flag
+            provider.name, provider.default_flags, provider.skip_permissions_flag
         )
 
         if success:
