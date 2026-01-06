@@ -1,0 +1,7 @@
+# Cindergrace Launcher Dependencies
+PyGObject>=3.42.0
+cryptography>=41.0.0
+
+# Optional (für sichere Passwort-Speicherung):
+# keyring>=24.0.0
+# Oder: sudo apt install python3-keyring

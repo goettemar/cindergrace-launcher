@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cindergrace-launcher"
+version = "1.0.0"
+description = "Multi-LLM Projekt-Manager - GTK4/Adwaita GUI für Claude, Codex, Gemini und andere KI-CLIs"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Cindergrace Team", email = "dev@cindergrace.de"}
+]
+maintainers = [
+    {name = "Cindergrace Team", email = "dev@cindergrace.de"}
+]
+keywords = [
+    "llm",
+    "ai",
+    "cli",
+    "launcher",
+    "gtk",
+    "claude",
+    "codex",
+    "gemini",
+    "project-manager",
+    "terminal"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications :: GTK",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: User Interfaces",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "PyGObject>=3.42.0",
+    "cryptography>=41.0.0",
+]
+
+[project.optional-dependencies]
+keyring = [
+    "keyring>=24.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/SamuelZoworka/cindergrace-launcher"
+Repository = "https://github.com/SamuelZoworka/cindergrace-launcher"
+Documentation = "https://github.com/SamuelZoworka/cindergrace-launcher#readme"
+Issues = "https://github.com/SamuelZoworka/cindergrace-launcher/issues"
+
+[project.scripts]
+cindergrace-launcher = "cindergrace_launcher.main:main"
+
+[project.gui-scripts]
+cindergrace-launcher-gui = "cindergrace_launcher.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+cindergrace_launcher = ["*.css", "*.png", "*.svg"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
