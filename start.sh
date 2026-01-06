@@ -1,20 +1,22 @@
 #!/bin/bash
 # Cindergrace Launcher starten (Linux/macOS)
-# Falls als Entwickler: python -m cindergrace_launcher
-# Falls installiert: cindergrace-launcher
-
 cd "$(dirname "$0")"
 
-# Prüfe ob virtual environment existiert
-if [ -f .venv/bin/activate ]; then
-    source .venv/bin/activate
+# Prüfe ob virtual environment existiert, sonst erstellen
+if [ ! -f .venv/bin/activate ]; then
+    echo "Erstelle virtuelle Umgebung..."
+    python3 -m venv .venv
 fi
 
-# Versuche als installiertes Package zu starten
-if command -v cindergrace-launcher &> /dev/null; then
-    cindergrace-launcher "$@"
-else
-    # Fallback: Als Modul aus src starten
-    export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
-    python3 -m cindergrace_launcher "$@"
+# Aktiviere venv
+source .venv/bin/activate
+
+# Prüfe ob PySide6 installiert ist
+if ! python3 -c "import PySide6" 2>/dev/null; then
+    echo "Installiere Abhängigkeiten..."
+    pip install -e . --quiet
 fi
+
+# Starte Launcher
+export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
+python3 -m cindergrace_launcher "$@"
