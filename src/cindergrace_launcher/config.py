@@ -4,13 +4,11 @@ Trennung zwischen lokalen Einstellungen und gesynchten Projektdaten
 """
 
 import json
-import os
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import List, Dict, Optional
-from dataclasses import dataclass, asdict, field
 
 from .providers import LLMProvider, get_initial_providers
-from .sync import SyncProject, SyncManager
+from .sync import SyncManager, SyncProject
 
 CONFIG_DIR = Path.home() / ".config" / "cindergrace-launcher"
 LOCAL_CONFIG_FILE = CONFIG_DIR / "local.json"
@@ -120,7 +118,7 @@ class LocalConfig:
     sync_path: str = ""     # Pfad zum Sync-Ordner (Google Drive etc.)
 
     # Provider (lokal, da Pfade systemspezifisch)
-    providers: List[LLMProvider] = field(default_factory=list)
+    providers: list[LLMProvider] = field(default_factory=list)
 
     # UI Einstellungen
     terminal_command: str = "gnome-terminal"
@@ -142,13 +140,13 @@ class LocalConfig:
                 default_root = Path.home() / "projekte"
             self.project_root = str(default_root)
 
-    def get_provider(self, provider_id: str) -> Optional[LLMProvider]:
+    def get_provider(self, provider_id: str) -> LLMProvider | None:
         for p in self.providers:
             if p.id == provider_id:
                 return p
         return None
 
-    def get_enabled_providers(self) -> List[LLMProvider]:
+    def get_enabled_providers(self) -> list[LLMProvider]:
         return [p for p in self.providers if p.enabled]
 
     def to_dict(self) -> dict:
@@ -187,11 +185,11 @@ class LocalConfig:
 class Config:
     """Hauptkonfiguration - kombiniert lokal und Projekte"""
     local: LocalConfig = field(default_factory=LocalConfig)
-    projects: List[Project] = field(default_factory=list)
+    projects: list[Project] = field(default_factory=list)
 
     # Convenience-Properties für Rückwärtskompatibilität
     @property
-    def providers(self) -> List[LLMProvider]:
+    def providers(self) -> list[LLMProvider]:
         return self.local.providers
 
     @property
@@ -242,10 +240,10 @@ class Config:
     def sync_path(self) -> str:
         return self.local.sync_path
 
-    def get_provider(self, provider_id: str) -> Optional[LLMProvider]:
+    def get_provider(self, provider_id: str) -> LLMProvider | None:
         return self.local.get_provider(provider_id)
 
-    def get_enabled_providers(self) -> List[LLMProvider]:
+    def get_enabled_providers(self) -> list[LLMProvider]:
         return self.local.get_enabled_providers()
 
     def get_provider_command(self, provider_id: str) -> str:
@@ -290,13 +288,13 @@ def ensure_config_dir():
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _migrate_old_config() -> Optional[dict]:
+def _migrate_old_config() -> dict | None:
     """Migriert alte Konfiguration falls vorhanden"""
     for old_dir in OLD_CONFIG_DIRS:
         old_file = old_dir / "config.json"
         if old_file.exists():
             try:
-                with open(old_file, 'r', encoding='utf-8') as f:
+                with open(old_file, encoding='utf-8') as f:
                     return json.load(f)
             except (OSError, json.JSONDecodeError):
                 # Alte Config nicht lesbar - überspringen
@@ -314,7 +312,7 @@ def load_config() -> Config:
     # Versuche lokale Config zu laden
     if LOCAL_CONFIG_FILE.exists():
         try:
-            with open(LOCAL_CONFIG_FILE, 'r', encoding='utf-8') as f:
+            with open(LOCAL_CONFIG_FILE, encoding='utf-8') as f:
                 data = json.load(f)
                 local_config = LocalConfig.from_dict(data.get('local', data))
                 projects = [Project.from_dict(p) for p in data.get('projects', [])]
@@ -405,7 +403,7 @@ except ImportError:
     _secret_store = None
 
 
-def get_sync_password() -> Optional[str]:
+def get_sync_password() -> str | None:
     """Holt Sync-Passwort aus OS Keyring (via cindergrace_common.SecretStore)"""
     if _secret_store:
         return _secret_store.get("sync_password")

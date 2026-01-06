@@ -1,6 +1,4 @@
 # Cindergrace Launcher Dependencies
 PySide6>=6.5.0
-cryptography>=41.0.0
-
-# Optional (für sichere Passwort-Speicherung):
-# keyring>=24.0.0
+cryptography>=43.0.1
+keyring>=24.0.0

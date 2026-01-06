@@ -3,21 +3,31 @@ Dialog-Klassen für Cindergrace Launcher (PySide6 Version)
 Ausgelagert aus cockpit.py für bessere Wartbarkeit
 """
 
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox,
-    QGroupBox, QScrollArea, QWidget, QFileDialog, QMessageBox,
-    QDialogButtonBox, QFrame
-)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
-from pathlib import Path
-from typing import Optional, Callable
 import os
+from collections.abc import Callable
+from pathlib import Path
+
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 from .config import Config, Project
-from .providers import LLMProvider
 from .process_manager import validate_command
+from .providers import LLMProvider
 
 
 def resolve_cloud_path(path: str) -> str:
@@ -193,8 +203,8 @@ class ProjectDialog(QDialog):
         self,
         parent,
         config: Config,
-        project: Optional[Project] = None,
-        on_save: Optional[Callable[[Project], None]] = None
+        project: Project | None = None,
+        on_save: Callable[[Project], None] | None = None
     ):
         super().__init__(parent)
         self.config = config
@@ -396,8 +406,8 @@ class ProviderDialog(QDialog):
     def __init__(
         self,
         parent,
-        provider: Optional[LLMProvider] = None,
-        on_save: Optional[Callable[[LLMProvider], None]] = None
+        provider: LLMProvider | None = None,
+        on_save: Callable[[LLMProvider], None] | None = None
     ):
         super().__init__(parent)
         self.provider = provider
@@ -560,9 +570,9 @@ class SettingsDialog(QDialog):
         self,
         parent,
         config: Config,
-        on_save: Optional[Callable[[Config], None]] = None,
-        on_export: Optional[Callable[[], None]] = None,
-        on_import: Optional[Callable[[], None]] = None
+        on_save: Callable[[Config], None] | None = None,
+        on_export: Callable[[], None] | None = None,
+        on_import: Callable[[], None] | None = None
     ):
         super().__init__(parent)
         self.config = config

@@ -5,21 +5,19 @@ Verwaltet laufende Terminal-Sessions für verschiedene LLM Provider
 Cross-Platform Support für Windows, macOS und Linux
 """
 
-import subprocess
 import os
-import sys
 import signal
-from typing import Dict, Optional, Tuple, Callable
-from dataclasses import dataclass
+import subprocess
+import sys
 import time
-
-from .providers import LLMProvider
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # Gefährliche Shell-Zeichen die Command Injection ermöglichen
 INJECTION_CHARS = set(';|&`$(){}<>\n\r')
 
 
-def validate_command(cmd: str) -> Tuple[bool, str]:
+def validate_command(cmd: str) -> tuple[bool, str]:
     """
     Validiert einen Befehl auf gefährliche Shell-Zeichen.
     Erlaubt Windows-Pfade (Backslash) und gequotete Pfade (für Leerzeichen).
@@ -84,7 +82,7 @@ class RunningSession:
     project_path: str
     provider_id: str
     terminal_pid: int
-    window_id: Optional[str] = None
+    window_id: str | None = None
     started_at: float = 0.0
 
     def __post_init__(self):
@@ -98,8 +96,8 @@ class ProcessManager:
     def __init__(self, terminal_cmd: str = ""):
         self.platform = get_platform()
         self.terminal_cmd = terminal_cmd or get_default_terminal()
-        self.sessions: Dict[str, RunningSession] = {}  # project_path -> session
-        self._pending_window_search: Optional[dict] = None
+        self.sessions: dict[str, RunningSession] = {}  # project_path -> session
+        self._pending_window_search: dict | None = None
 
     def poll_for_window(self) -> bool:
         """
@@ -145,8 +143,8 @@ class ProcessManager:
         provider_name: str = "",
         default_flags: str = "",
         skip_permissions_flag: str = "",
-        on_window_found: Optional[Callable[[str], None]] = None
-    ) -> Tuple[bool, str]:
+        on_window_found: Callable[[str], None] | None = None
+    ) -> tuple[bool, str]:
         """
         Startet eine neue LLM CLI Session für ein Projekt.
 
@@ -317,7 +315,7 @@ class ProcessManager:
             start_new_session=True
         )
 
-    def stop_session(self, project_path: str) -> Tuple[bool, str]:
+    def stop_session(self, project_path: str) -> tuple[bool, str]:
         """Beendet eine LLM CLI Session"""
         if project_path not in self.sessions:
             return False, "Keine aktive Session"
@@ -375,13 +373,13 @@ class ProcessManager:
         except OSError:
             return False
 
-    def get_session_provider(self, project_path: str) -> Optional[str]:
+    def get_session_provider(self, project_path: str) -> str | None:
         """Gibt die Provider-ID einer laufenden Session zurück"""
         if project_path in self.sessions:
             return self.sessions[project_path].provider_id
         return None
 
-    def focus_window(self, project_path: str) -> Tuple[bool, str]:
+    def focus_window(self, project_path: str) -> tuple[bool, str]:
         """Bringt das Terminal-Fenster in den Vordergrund"""
         if project_path not in self.sessions:
             return False, "Keine aktive Session"
@@ -438,7 +436,7 @@ class ProcessManager:
         except FileNotFoundError:
             return False, "wmctrl/xdotool nicht installiert"
 
-    def _find_window_by_title(self, title: str) -> Optional[str]:
+    def _find_window_by_title(self, title: str) -> str | None:
         """Findet eine Window ID anhand des Titels (nur Linux)"""
         if self.platform != "linux":
             return None
@@ -456,7 +454,7 @@ class ProcessManager:
             pass
         return None
 
-    def _find_window_by_pid(self, pid: int) -> Optional[str]:
+    def _find_window_by_pid(self, pid: int) -> str | None:
         """Findet eine Window ID anhand der PID (nur Linux)"""
         if self.platform != "linux":
             return None
@@ -475,7 +473,7 @@ class ProcessManager:
             pass
         return None
 
-    def get_all_status(self) -> Dict[str, bool]:
+    def get_all_status(self) -> dict[str, bool]:
         """Gibt den Status aller bekannten Sessions zurück"""
         status = {}
         for path in list(self.sessions.keys()):

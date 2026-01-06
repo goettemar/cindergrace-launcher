@@ -4,8 +4,8 @@ Cindergrace Launcher - Haupteinstiegspunkt
 Verwaltet LLM CLI Sessions (Claude, Codex, Gemini) für verschiedene Projekte
 """
 
-import sys
 import os
+import sys
 
 
 def main():
@@ -16,8 +16,9 @@ def main():
     if os.path.isdir(common_src):
         sys.path.insert(0, os.path.abspath(common_src))
 
-    from PySide6.QtWidgets import QApplication
     from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
+
     from .cockpit import LauncherWindow
 
     # High DPI Support

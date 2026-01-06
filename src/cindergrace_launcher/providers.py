@@ -3,8 +3,7 @@ LLM Provider Abstraktionsschicht für LLM Cockpit
 Unterstützt verschiedene LLM CLI Tools - vollständig konfigurierbar
 """
 
-from dataclasses import dataclass, asdict, field
-from typing import List, Dict, Optional
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -53,7 +52,7 @@ class LLMProvider:
         return cls(**filtered_data)
 
 
-def get_initial_providers() -> List[LLMProvider]:
+def get_initial_providers() -> list[LLMProvider]:
     """Gibt initiale Provider für Erstinstallation zurück"""
     home = str(Path.home())
 

@@ -5,12 +5,12 @@ AES-verschlüsselte Synchronisation von Projektdaten
 
 import json
 import secrets
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
-from dataclasses import dataclass, asdict
+
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
 
 SYNC_FILENAME = "launcher_sync.enc"
 SALT_SIZE = 16
@@ -49,7 +49,7 @@ def encrypt_data(data: dict, password: str) -> bytes:
     return salt + nonce + ciphertext
 
 
-def decrypt_data(encrypted: bytes, password: str) -> Optional[dict]:
+def decrypt_data(encrypted: bytes, password: str) -> dict | None:
     """Entschlüsselt Daten mit AES-GCM"""
     if len(encrypted) < SALT_SIZE + NONCE_SIZE + 16:  # Mindestens 16 Bytes Ciphertext
         return None
@@ -149,7 +149,7 @@ class SyncManager:
         """Prüft ob Sync konfiguriert ist"""
         return bool(self.sync_path) and bool(self.password)
 
-    def _find_sync_file(self) -> Optional[Path]:
+    def _find_sync_file(self) -> Path | None:
         """
         Findet die Sync-Datei im Ordner.
 
@@ -215,7 +215,7 @@ class SyncManager:
             print(f"Sync-Export Serialisierungsfehler: {e}")
             return False
 
-    def import_projects(self) -> Optional[list[SyncProject]]:
+    def import_projects(self) -> list[SyncProject] | None:
         """Importiert Projekte aus verschlüsselter Sync-Datei"""
         if not self.is_configured():
             return None

@@ -8,23 +8,38 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QLineEdit, QComboBox, QListWidget, QListWidgetItem,
-    QMessageBox, QMenu, QMenuBar, QStatusBar, QDialog,
-    QScrollArea, QFrame, QSplitter, QToolBar, QSizePolicy
+    QComboBox,
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt, QTimer, QSize
-from PySide6.QtGui import QAction, QIcon, QFont, QColor, QPalette
 
 from .config import (
-    Config, Project, load_config, save_config, add_project, remove_project, update_project,
-    export_to_sync, import_from_sync, get_sync_password, set_sync_password
+    Config,
+    Project,
+    add_project,
+    export_to_sync,
+    import_from_sync,
+    load_config,
+    remove_project,
+    save_config,
+    update_project,
 )
 from .process_manager import ProcessManager, validate_command
-from .providers import LLMProvider, get_initial_providers
+from .providers import LLMProvider
 
 # Cindergrace Branding
 BRAND_COLORS = {
@@ -641,7 +656,7 @@ class LauncherWindow(QMainWindow):
         if 0 <= index < len(self.config.projects):
             self._show_project_dialog(self.config.projects[index], index)
 
-    def _show_project_dialog(self, project: Optional[Project], index: int):
+    def _show_project_dialog(self, project: Project | None, index: int):
         """Zeigt Dialog zum Hinzufügen/Bearbeiten eines Projekts"""
         from .dialogs import ProjectDialog
 
