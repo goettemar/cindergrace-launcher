@@ -11,12 +11,8 @@ if not exist .venv\Scripts\activate.bat (
 REM Aktiviere venv
 call .venv\Scripts\activate.bat
 
-REM Prüfe ob PySide6 installiert ist
-python -c "import PySide6" >nul 2>nul
-if %ERRORLEVEL% neq 0 (
-    echo Installiere Abhaengigkeiten...
-    pip install -e . --quiet
-)
+REM Installiere/Aktualisiere Abhaengigkeiten
+pip install --upgrade -e . --quiet 2>nul
 
 REM Starte Launcher
 set PYTHONPATH=%~dp0src

@@ -11,11 +11,8 @@ fi
 # Aktiviere venv
 source .venv/bin/activate
 
-# Prüfe ob PySide6 installiert ist
-if ! python3 -c "import PySide6" 2>/dev/null; then
-    echo "Installiere Abhängigkeiten..."
-    pip install -e . --quiet
-fi
+# Installiere/Aktualisiere Abhängigkeiten
+pip install --upgrade -e . --quiet 2>/dev/null
 
 # Starte Launcher
 export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
