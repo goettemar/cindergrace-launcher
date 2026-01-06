@@ -692,7 +692,40 @@ class LauncherWindow(QMainWindow):
         """Öffnet Einstellungs-Dialog"""
         from .dialogs import SettingsDialog
 
-        dialog = SettingsDialog(self, self.config)
+        def on_save(config):
+            save_config(config)
+            self.show_toast("Einstellungen gespeichert")
+
+        def on_export():
+            if not self.config.sync_path:
+                self.show_toast("Kein Sync-Ordner konfiguriert")
+                return
+            try:
+                export_to_sync(self.config)
+                self.show_toast(f"Exportiert nach {self.config.sync_path}")
+            except Exception as e:
+                self.show_toast(f"Export fehlgeschlagen: {e}")
+
+        def on_import():
+            if not self.config.sync_path:
+                self.show_toast("Kein Sync-Ordner konfiguriert")
+                return
+            try:
+                import_from_sync(self.config)
+                self.config = load_config()
+                self._refresh_list()
+                self.show_toast("Import erfolgreich")
+            except FileNotFoundError:
+                self.show_toast("Keine Sync-Datei gefunden")
+            except Exception as e:
+                self.show_toast(f"Import fehlgeschlagen: {e}")
+
+        dialog = SettingsDialog(
+            self, self.config,
+            on_save=on_save,
+            on_export=on_export,
+            on_import=on_import
+        )
         if dialog.exec() == QDialog.Accepted:
             self.config = load_config()
             self.process_manager.terminal_cmd = self.config.terminal_command
