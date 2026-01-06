@@ -700,25 +700,18 @@ class LauncherWindow(QMainWindow):
             if not self.config.sync_path:
                 self.show_toast("Kein Sync-Ordner konfiguriert")
                 return
-            try:
-                export_to_sync(self.config)
-                self.show_toast(f"Exportiert nach {self.config.sync_path}")
-            except Exception as e:
-                self.show_toast(f"Export fehlgeschlagen: {e}")
+            success, msg = export_to_sync(self.config)
+            self.show_toast(msg)
 
         def on_import():
             if not self.config.sync_path:
                 self.show_toast("Kein Sync-Ordner konfiguriert")
                 return
-            try:
-                import_from_sync(self.config)
+            success, msg = import_from_sync(self.config)
+            if success:
                 self.config = load_config()
                 self._refresh_list()
-                self.show_toast("Import erfolgreich")
-            except FileNotFoundError:
-                self.show_toast("Keine Sync-Datei gefunden")
-            except Exception as e:
-                self.show_toast(f"Import fehlgeschlagen: {e}")
+            self.show_toast(msg)
 
         dialog = SettingsDialog(
             self, self.config,
