@@ -685,14 +685,24 @@ class SettingsDialog(QDialog):
         sync_layout.addLayout(sync_buttons)
         scroll_layout.addWidget(sync_group)
 
-        # === Provider Info ===
+        # === Provider-Verwaltung ===
         provider_group = QGroupBox("LLM Provider")
         provider_layout = QVBoxLayout(provider_group)
 
-        provider_count = len(self.config.providers)
-        enabled_count = len([p for p in self.config.providers if p.enabled])
-        provider_label = QLabel(f"{provider_count} Provider konfiguriert ({enabled_count} aktiviert)")
-        provider_layout.addWidget(provider_label)
+        # Provider-Liste (scrollbar)
+        self.provider_list_widget = QWidget()
+        self.provider_list_layout = QVBoxLayout(self.provider_list_widget)
+        self.provider_list_layout.setSpacing(5)
+        self.provider_list_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._refresh_provider_list()
+
+        provider_layout.addWidget(self.provider_list_widget)
+
+        # Button zum Hinzufuegen
+        add_provider_btn = QPushButton("+ Provider hinzufuegen")
+        add_provider_btn.clicked.connect(self._on_add_provider)
+        provider_layout.addWidget(add_provider_btn)
 
         scroll_layout.addWidget(provider_group)
 
@@ -768,3 +778,92 @@ class SettingsDialog(QDialog):
     def _on_close(self):
         self._save_settings()
         self.accept()
+
+    def _refresh_provider_list(self):
+        """Aktualisiert die Provider-Liste"""
+        # Alte Widgets entfernen
+        while self.provider_list_layout.count():
+            child = self.provider_list_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        # Provider hinzufuegen
+        for provider in self.config.providers:
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 2, 0, 2)
+            row_layout.setSpacing(6)
+
+            # Status-Indikator (farbiger Punkt)
+            status_label = QLabel("●" if provider.enabled else "○")
+            status_label.setStyleSheet(f"color: {provider.color}; font-size: 12px;")
+            status_label.setFixedWidth(16)
+            row_layout.addWidget(status_label)
+
+            # Nur Name (ohne Icon-String)
+            name_label = QLabel(provider.name)
+            name_label.setStyleSheet("color: #e0e0e0;")
+            row_layout.addWidget(name_label, 1)
+
+            # Bearbeiten-Button
+            edit_btn = QPushButton("✏")
+            edit_btn.setFixedSize(26, 26)
+            edit_btn.setToolTip("Bearbeiten")
+            edit_btn.clicked.connect(lambda checked, p=provider: self._on_edit_provider(p))
+            row_layout.addWidget(edit_btn)
+
+            # Loeschen-Button
+            del_btn = QPushButton("🗑")
+            del_btn.setFixedSize(26, 26)
+            del_btn.setToolTip("Loeschen")
+            del_btn.clicked.connect(lambda checked, p=provider: self._on_delete_provider(p))
+            row_layout.addWidget(del_btn)
+
+            self.provider_list_layout.addWidget(row)
+
+    def _on_add_provider(self):
+        """Neuen Provider hinzufuegen"""
+        def save_new_provider(new_provider: LLMProvider):
+            try:
+                self.config.add_provider(new_provider)
+                self._refresh_provider_list()
+            except ValueError as e:
+                QMessageBox.warning(self, "Fehler", str(e))
+
+        dialog = ProviderDialog(self, provider=None, on_save=save_new_provider)
+        dialog.exec()
+
+    def _on_edit_provider(self, provider: LLMProvider):
+        """Provider bearbeiten"""
+        def save_updated_provider(updated: LLMProvider):
+            try:
+                self.config.update_provider(provider.id, updated)
+                self._refresh_provider_list()
+            except ValueError as e:
+                QMessageBox.warning(self, "Fehler", str(e))
+
+        dialog = ProviderDialog(self, provider=provider, on_save=save_updated_provider)
+        dialog.exec()
+
+    def _on_delete_provider(self, provider: LLMProvider):
+        """Provider loeschen"""
+        # Mindestens ein Provider muss bleiben
+        if len(self.config.providers) <= 1:
+            QMessageBox.warning(
+                self,
+                "Nicht moeglich",
+                "Es muss mindestens ein Provider konfiguriert sein."
+            )
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Provider loeschen",
+            f"Provider '{provider.name}' wirklich loeschen?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.config.remove_provider(provider.id)
+            self._refresh_provider_list()

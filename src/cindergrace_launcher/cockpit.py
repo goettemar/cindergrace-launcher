@@ -169,13 +169,14 @@ class ProjectWidget(QFrame):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
 
-        # Favorit-Button
+        # Favorit-Button (Stern links)
         self.fav_btn = QPushButton("★" if self.project.favorite else "☆")
-        self.fav_btn.setFixedSize(30, 30)
+        self.fav_btn.setFixedSize(36, 36)
+        self.fav_btn.setToolTip("Favorit" if self.project.favorite else "Als Favorit markieren")
         self.fav_btn.setStyleSheet(
-            f"color: {BRAND_COLORS['blue_dark']}; border: none; font-size: 18px;"
+            f"color: #FFD700; border: none; font-size: 22px; font-weight: bold;"
             if self.project.favorite else
-            "color: #ccc; border: none; font-size: 18px;"
+            "color: #bbb; border: none; font-size: 22px;"
         )
         self.fav_btn.setCursor(Qt.PointingHandCursor)
         self.fav_btn.clicked.connect(self._on_toggle_favorite)
