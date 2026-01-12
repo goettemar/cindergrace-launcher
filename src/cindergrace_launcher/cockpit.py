@@ -169,7 +169,7 @@ class ProjectWidget(QFrame):
         self.parent_window = parent
 
         self.setObjectName("card")
-        self.setFrameStyle(QFrame.StyledPanel)
+        self.setFrameStyle(QFrame.StyledPanel)  # type: ignore[attr-defined]
         self._build_ui()
 
     def _build_ui(self):
@@ -688,7 +688,7 @@ class LauncherWindow(QMainWindow):
             saved_project = new_project
 
         dialog = ProjectDialog(self, self.config, project, on_save=on_save)
-        if dialog.exec() == QDialog.Accepted and saved_project:
+        if dialog.exec() == QDialog.Accepted and saved_project:  # type: ignore[attr-defined]
             if project is not None:
                 self.config = update_project(self.config, index, saved_project)
                 self.show_toast(f"Projekt aktualisiert: {saved_project.name}")
@@ -707,10 +707,10 @@ class LauncherWindow(QMainWindow):
                 self,
                 "Projekt entfernen?",
                 f"Möchtest du '{project.name}' aus der Liste entfernen?\n\nDer Projektordner wird nicht gelöscht.",
-                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes | QMessageBox.No,  # type: ignore[attr-defined]
             )
 
-            if reply == QMessageBox.Yes:
+            if reply == QMessageBox.Yes:  # type: ignore[attr-defined]
                 self.config = remove_project(self.config, index)
                 self._update_category_filter()
                 self._refresh_list()

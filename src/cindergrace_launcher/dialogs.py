@@ -762,7 +762,7 @@ class SettingsDialog(QDialog):
 
         # Passwort nur speichern wenn neu eingegeben (nicht leer = Placeholder)
         password = self.password_entry.text()
-        if password and password.strip() and set_sync_password:
+        if password and password.strip() and set_sync_password:  # type: ignore[truthy-function]
             try:
                 set_sync_password(password)
             except (OSError, TypeError, ValueError):

@@ -306,7 +306,7 @@ def _migrate_old_config() -> dict | None:
         if old_file.exists():
             try:
                 with open(old_file, encoding="utf-8") as f:
-                    return json.load(f)
+                    return json.load(f)  # type: ignore[no-any-return]
             except (OSError, json.JSONDecodeError):
                 # Alte Config nicht lesbar - überspringen
                 pass
@@ -422,7 +422,7 @@ except ImportError:
 def get_sync_password() -> str | None:
     """Holt Sync-Passwort aus OS Keyring (via cindergrace_common.SecretStore)"""
     if _secret_store:
-        return _secret_store.get("sync_password")
+        return _secret_store.get("sync_password")  # type: ignore[no-any-return]
 
     # Fallback ohne cindergrace_common
     try:

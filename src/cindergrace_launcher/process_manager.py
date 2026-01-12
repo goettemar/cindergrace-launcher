@@ -252,7 +252,7 @@ class ProcessManager:
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,  # type: ignore[attr-defined]
         )
 
     def _start_macos_terminal(
@@ -370,7 +370,7 @@ class ProcessManager:
                     ["tasklist", "/FI", f"PID eq {session.terminal_pid}"],
                     capture_output=True,
                     text=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    creationflags=subprocess.CREATE_NO_WINDOW,  # type: ignore[attr-defined]
                 )
                 return str(session.terminal_pid) in result.stdout
             else:

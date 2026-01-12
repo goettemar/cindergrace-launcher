@@ -1,0 +1,4 @@
+[pydocstyle]
+convention = google
+add-ignore = D100,D101,D102,D103,D104,D105,D107,D200,D203,D205,D212,D402,D415,D417
+match = (?!test_).*\.py

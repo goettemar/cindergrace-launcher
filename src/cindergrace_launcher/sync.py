@@ -68,7 +68,7 @@ def decrypt_data(encrypted: bytes, password: str) -> dict | None:
         plaintext = aesgcm.decrypt(nonce, ciphertext, None)
 
         # JSON parsen
-        return json.loads(plaintext.decode("utf-8"))
+        return json.loads(plaintext.decode("utf-8"))  # type: ignore[no-any-return]
     except (
         # Cryptography: Falsches Passwort oder korrupte Daten
         # InvalidTag wird bei AES-GCM geworfen wenn Authentifizierung fehlschlägt
