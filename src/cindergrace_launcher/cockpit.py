@@ -5,7 +5,7 @@ Unterstützt: Vollständig konfigurierbare Provider + Sync
 """
 
 import os
-import subprocess
+import subprocess  # nosec B404 - needed for terminal launching
 import sys
 from pathlib import Path
 
@@ -151,8 +151,15 @@ QStatusBar {
 class ProjectWidget(QFrame):
     """Ein Projekt-Eintrag in der Liste"""
 
-    def __init__(self, project: Project, index: int, is_running: bool,
-                 running_provider: str, config: Config, parent=None):
+    def __init__(
+        self,
+        project: Project,
+        index: int,
+        is_running: bool,
+        running_provider: str,
+        config: Config,
+        parent=None,
+    ):
         super().__init__(parent)
         self.project = project
         self.index = index
@@ -172,11 +179,13 @@ class ProjectWidget(QFrame):
         # Favorit-Button (Stern links)
         self.fav_btn = QPushButton("★" if self.project.favorite else "☆")
         self.fav_btn.setFixedSize(36, 36)
-        self.fav_btn.setToolTip("Favorit" if self.project.favorite else "Als Favorit markieren")
+        self.fav_btn.setToolTip(
+            "Favorit" if self.project.favorite else "Als Favorit markieren"
+        )
         self.fav_btn.setStyleSheet(
-            f"color: #FFD700; border: none; font-size: 22px; font-weight: bold;"
-            if self.project.favorite else
-            "color: #bbb; border: none; font-size: 22px;"
+            "color: #FFD700; border: none; font-size: 22px; font-weight: bold;"
+            if self.project.favorite
+            else "color: #bbb; border: none; font-size: 22px;"
         )
         self.fav_btn.setCursor(Qt.PointingHandCursor)
         self.fav_btn.clicked.connect(self._on_toggle_favorite)
@@ -337,9 +346,7 @@ class LauncherWindow(QMainWindow):
         self.setMinimumSize(900, 650)
 
         self.config = load_config()
-        self.process_manager = ProcessManager(
-            terminal_cmd=self.config.terminal_command
-        )
+        self.process_manager = ProcessManager(terminal_cmd=self.config.terminal_command)
 
         self.search_text = ""
         self.filter_category = None
@@ -477,10 +484,12 @@ class LauncherWindow(QMainWindow):
 
             if self.search_text:
                 abs_path = self.config.get_project_absolute_path(p)
-                if (self.search_text not in p.name.lower() and
-                    self.search_text not in abs_path.lower() and
-                    self.search_text not in p.relative_path.lower() and
-                    self.search_text not in p.category.lower()):
+                if (
+                    self.search_text not in p.name.lower()
+                    and self.search_text not in abs_path.lower()
+                    and self.search_text not in p.relative_path.lower()
+                    and self.search_text not in p.category.lower()
+                ):
                     continue
 
             if self.filter_category and p.category != self.filter_category:
@@ -521,8 +530,7 @@ class LauncherWindow(QMainWindow):
                     running_provider = self.process_manager.get_session_provider(abs_path)
 
                 widget = ProjectWidget(
-                    project, orig_index, is_running, running_provider,
-                    self.config, parent=self
+                    project, orig_index, is_running, running_provider, self.config, parent=self
                 )
                 self.list_layout.insertWidget(self.list_layout.count() - 1, widget)
 
@@ -545,7 +553,8 @@ class LauncherWindow(QMainWindow):
     def _update_status(self):
         """Aktualisiert nur die Status-Anzeige"""
         running_count = sum(
-            1 for p in self.config.projects
+            1
+            for p in self.config.projects
             if self.process_manager.is_running(self.config.get_project_absolute_path(p))
         )
         total = len(self.config.projects)
@@ -588,15 +597,21 @@ class LauncherWindow(QMainWindow):
 
         try:
             if sys.platform == "win32":
-                subprocess.Popen(
+                subprocess.Popen(  # nosec B603 B607 - trusted terminal command
                     ["cmd", "/c", f"cd /d {abs_path} && {start_cmd}"],
-                    creationflags=subprocess.CREATE_NEW_CONSOLE
+                    creationflags=subprocess.CREATE_NEW_CONSOLE,
                 )
             else:
-                subprocess.Popen(
-                    [self.config.terminal_command, f"--working-directory={abs_path}",
-                     "--", "bash", "-c", f"{start_cmd}; exec bash"],
-                    start_new_session=True
+                subprocess.Popen(  # nosec B603 B607 - trusted terminal command
+                    [
+                        self.config.terminal_command,
+                        f"--working-directory={abs_path}",
+                        "--",
+                        "bash",
+                        "-c",
+                        f"{start_cmd}; exec bash",
+                    ],
+                    start_new_session=True,
                 )
             self.show_toast(f"Gestartet: {project.name}")
         except FileNotFoundError:
@@ -612,8 +627,13 @@ class LauncherWindow(QMainWindow):
             return
 
         success, message = self.process_manager.start_session(
-            path, name, provider_id, provider.command,
-            provider.name, provider.default_flags, provider.skip_permissions_flag
+            path,
+            name,
+            provider_id,
+            provider.command,
+            provider.name,
+            provider.default_flags,
+            provider.skip_permissions_flag,
         )
 
         if success:
@@ -684,10 +704,10 @@ class LauncherWindow(QMainWindow):
             project = self.config.projects[index]
 
             reply = QMessageBox.question(
-                self, "Projekt entfernen?",
-                f"Möchtest du '{project.name}' aus der Liste entfernen?\n\n"
-                "Der Projektordner wird nicht gelöscht.",
-                QMessageBox.Yes | QMessageBox.No
+                self,
+                "Projekt entfernen?",
+                f"Möchtest du '{project.name}' aus der Liste entfernen?\n\nDer Projektordner wird nicht gelöscht.",
+                QMessageBox.Yes | QMessageBox.No,
             )
 
             if reply == QMessageBox.Yes:
@@ -699,13 +719,14 @@ class LauncherWindow(QMainWindow):
     def _on_about(self):
         """Zeigt About-Dialog"""
         QMessageBox.about(
-            self, "Über Cindergrace Launcher",
+            self,
+            "Über Cindergrace Launcher",
             "<h2>Cindergrace Launcher</h2>"
             "<p>Version 1.1.0</p>"
             "<p>LLM CLI Session Manager</p>"
             "<p>Verwaltet Claude, Codex, Gemini und andere KI-CLIs</p>"
             "<p><br>© 2025 Cindergrace Team</p>"
-            "<p><a href='https://github.com/goettemar/cindergrace-launcher'>GitHub</a></p>"
+            "<p><a href='https://github.com/goettemar/cindergrace-launcher'>GitHub</a></p>",
         )
 
     def _on_settings(self):
@@ -739,10 +760,7 @@ class LauncherWindow(QMainWindow):
                 QMessageBox.warning(self, "Import", msg)
 
         dialog = SettingsDialog(
-            self, self.config,
-            on_save=on_save,
-            on_export=on_export,
-            on_import=on_import
+            self, self.config, on_save=on_save, on_export=on_export, on_import=on_import
         )
         if dialog.exec() == QDialog.Accepted:
             self.config = load_config()
@@ -754,4 +772,5 @@ class LauncherWindow(QMainWindow):
 def main():
     """Wird von __init__.py aufgerufen für Rückwärtskompatibilität"""
     from .main import main as entry_main
+
     entry_main()

@@ -47,6 +47,7 @@ def resolve_cloud_path(path: str) -> str:
         # GVFS: /run/user/UID/gvfs/google-drive:host=domain,user=user/driveId/folderId
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(path)
 
             # User und Host extrahieren (user@domain format)
@@ -204,7 +205,7 @@ class ProjectDialog(QDialog):
         parent,
         config: Config,
         project: Project | None = None,
-        on_save: Callable[[Project], None] | None = None
+        on_save: Callable[[Project], None] | None = None,
     ):
         super().__init__(parent)
         self.config = config
@@ -342,13 +343,14 @@ class ProjectDialog(QDialog):
         layout.addLayout(button_layout)
 
     def _on_browse(self):
-        start_dir = self.config.project_root if self.config.project_root and os.path.isdir(self.config.project_root) else str(Path.home())
+        start_dir = (
+            self.config.project_root
+            if self.config.project_root and os.path.isdir(self.config.project_root)
+            else str(Path.home())
+        )
 
         folder = QFileDialog.getExistingDirectory(
-            self,
-            "Projektordner auswählen",
-            start_dir,
-            QFileDialog.Option.ShowDirsOnly
+            self, "Projektordner auswählen", start_dir, QFileDialog.Option.ShowDirsOnly
         )
 
         if folder:
@@ -381,7 +383,11 @@ class ProjectDialog(QDialog):
                 return
 
         selected_idx = self.provider_dropdown.currentIndex()
-        provider_id = self.provider_ids[selected_idx] if selected_idx < len(self.provider_ids) else "claude"
+        provider_id = (
+            self.provider_ids[selected_idx]
+            if selected_idx < len(self.provider_ids)
+            else "claude"
+        )
 
         new_project = Project(
             name=name,
@@ -391,7 +397,7 @@ class ProjectDialog(QDialog):
             default_provider=provider_id,
             custom_start_command=start_cmd,
             hidden=self.project.hidden if self.project else False,
-            favorite=self.project.favorite if self.project else False
+            favorite=self.project.favorite if self.project else False,
         )
 
         if self.on_save:
@@ -407,7 +413,7 @@ class ProviderDialog(QDialog):
         self,
         parent,
         provider: LLMProvider | None = None,
-        on_save: Callable[[LLMProvider], None] | None = None
+        on_save: Callable[[LLMProvider], None] | None = None,
     ):
         super().__init__(parent)
         self.provider = provider
@@ -466,7 +472,9 @@ class ProviderDialog(QDialog):
 
         cmd_layout.addWidget(QLabel("Skip-Permissions Flag:"), 1, 0)
         self.skip_flag_entry = QLineEdit()
-        self.skip_flag_entry.setText(self.provider.skip_permissions_flag if self.provider else "")
+        self.skip_flag_entry.setText(
+            self.provider.skip_permissions_flag if self.provider else ""
+        )
         cmd_layout.addWidget(self.skip_flag_entry, 1, 1)
 
         scroll_layout.addWidget(cmd_group)
@@ -554,7 +562,7 @@ class ProviderDialog(QDialog):
             icon=self.icon_entry.text().strip() or "🤖",
             color=self.color_entry.text().strip() or "#666666",
             enabled=self.enabled_switch.isChecked(),
-            skip_permissions_flag=skip_flag
+            skip_permissions_flag=skip_flag,
         )
 
         if self.on_save:
@@ -572,7 +580,7 @@ class SettingsDialog(QDialog):
         config: Config,
         on_save: Callable[[Config], None] | None = None,
         on_export: Callable[[], None] | None = None,
-        on_import: Callable[[], None] | None = None
+        on_import: Callable[[], None] | None = None,
     ):
         super().__init__(parent)
         self.config = config
@@ -660,6 +668,7 @@ class SettingsDialog(QDialog):
         # Passwort NICHT anzeigen (Sicherheit) - nur Placeholder wenn gesetzt
         try:
             from .config import get_sync_password
+
             current_pw = get_sync_password()
             if current_pw:
                 self.password_entry.setPlaceholderText("••••••••  (bereits gesetzt)")
@@ -730,10 +739,7 @@ class SettingsDialog(QDialog):
     def _browse_folder(self, target_entry: QLineEdit):
         current = target_entry.text() or str(Path.home())
         folder = QFileDialog.getExistingDirectory(
-            self,
-            "Ordner auswählen",
-            current,
-            QFileDialog.Option.ShowDirsOnly
+            self, "Ordner auswählen", current, QFileDialog.Option.ShowDirsOnly
         )
         if folder:
             target_entry.setText(folder)
@@ -823,6 +829,7 @@ class SettingsDialog(QDialog):
 
     def _on_add_provider(self):
         """Neuen Provider hinzufuegen"""
+
         def save_new_provider(new_provider: LLMProvider):
             try:
                 self.config.add_provider(new_provider)
@@ -835,6 +842,7 @@ class SettingsDialog(QDialog):
 
     def _on_edit_provider(self, provider: LLMProvider):
         """Provider bearbeiten"""
+
         def save_updated_provider(updated: LLMProvider):
             try:
                 self.config.update_provider(provider.id, updated)
@@ -850,9 +858,7 @@ class SettingsDialog(QDialog):
         # Mindestens ein Provider muss bleiben
         if len(self.config.providers) <= 1:
             QMessageBox.warning(
-                self,
-                "Nicht moeglich",
-                "Es muss mindestens ein Provider konfiguriert sein."
+                self, "Nicht moeglich", "Es muss mindestens ein Provider konfiguriert sein."
             )
             return
 
@@ -861,7 +867,7 @@ class SettingsDialog(QDialog):
             "Provider loeschen",
             f"Provider '{provider.name}' wirklich loeschen?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:

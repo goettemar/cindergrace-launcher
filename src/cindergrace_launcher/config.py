@@ -23,6 +23,7 @@ OLD_CONFIG_DIRS = [
 @dataclass
 class Project:
     """Ein Projekt mit Pfad und Metadaten"""
+
     name: str
     relative_path: str  # Relativer Pfad vom project_root
     description: str = ""
@@ -62,11 +63,11 @@ class Project:
             default_provider=self.default_provider,
             custom_start_command=self.custom_start_command,
             hidden=self.hidden,
-            favorite=self.favorite
+            favorite=self.favorite,
         )
 
     @classmethod
-    def from_sync_project(cls, sp: SyncProject) -> 'Project':
+    def from_sync_project(cls, sp: SyncProject) -> "Project":
         """Erstellt Project aus SyncProject"""
         return cls(
             name=sp.name,
@@ -76,35 +77,43 @@ class Project:
             default_provider=sp.default_provider,
             custom_start_command=sp.custom_start_command,
             hidden=sp.hidden,
-            favorite=sp.favorite
+            favorite=sp.favorite,
         )
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'Project':
+    def from_dict(cls, data: dict) -> "Project":
         """Erstellt Project aus Dictionary mit Rückwärtskompatibilität"""
         # Migration: Alter 'path' zu 'relative_path'
-        if 'path' in data and 'relative_path' not in data:
+        if "path" in data and "relative_path" not in data:
             # Versuche relativen Pfad zu extrahieren
-            old_path = data['path']
+            old_path = data["path"]
             # Nimm nur den letzten Ordnernamen als relativen Pfad
-            data['relative_path'] = Path(old_path).name
+            data["relative_path"] = Path(old_path).name
 
         defaults = {
-            'relative_path': '',
-            'description': '',
-            'category': 'Allgemein',
-            'default_provider': 'claude',
-            'custom_start_command': '',
-            'hidden': False,
-            'favorite': False
+            "relative_path": "",
+            "description": "",
+            "category": "Allgemein",
+            "default_provider": "claude",
+            "custom_start_command": "",
+            "hidden": False,
+            "favorite": False,
         }
         for key, default_val in defaults.items():
             if key not in data:
                 data[key] = default_val
 
         # Nur bekannte Felder übernehmen
-        known_fields = {'name', 'relative_path', 'description', 'category',
-                       'default_provider', 'custom_start_command', 'hidden', 'favorite'}
+        known_fields = {
+            "name",
+            "relative_path",
+            "description",
+            "category",
+            "default_provider",
+            "custom_start_command",
+            "hidden",
+            "favorite",
+        }
         filtered = {k: v for k, v in data.items() if k in known_fields}
 
         return cls(**filtered)
@@ -113,9 +122,10 @@ class Project:
 @dataclass
 class LocalConfig:
     """Lokale Konfiguration (wird NICHT gesyncht)"""
+
     # Pfade
     project_root: str = ""  # Root-Verzeichnis für Projekte
-    sync_path: str = ""     # Pfad zum Sync-Ordner (Google Drive etc.)
+    sync_path: str = ""  # Pfad zum Sync-Ordner (Google Drive etc.)
 
     # Provider (lokal, da Pfade systemspezifisch)
     providers: list[LLMProvider] = field(default_factory=list)
@@ -163,7 +173,7 @@ class LocalConfig:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'LocalConfig':
+    def from_dict(cls, data: dict) -> "LocalConfig":
         providers = []
         if "providers" in data:
             providers = [LLMProvider.from_dict(p) for p in data["providers"]]
@@ -184,6 +194,7 @@ class LocalConfig:
 @dataclass
 class Config:
     """Hauptkonfiguration - kombiniert lokal und Projekte"""
+
     local: LocalConfig = field(default_factory=LocalConfig)
     projects: list[Project] = field(default_factory=list)
 
@@ -294,7 +305,7 @@ def _migrate_old_config() -> dict | None:
         old_file = old_dir / "config.json"
         if old_file.exists():
             try:
-                with open(old_file, encoding='utf-8') as f:
+                with open(old_file, encoding="utf-8") as f:
                     return json.load(f)
             except (OSError, json.JSONDecodeError):
                 # Alte Config nicht lesbar - überspringen
@@ -312,10 +323,10 @@ def load_config() -> Config:
     # Versuche lokale Config zu laden
     if LOCAL_CONFIG_FILE.exists():
         try:
-            with open(LOCAL_CONFIG_FILE, encoding='utf-8') as f:
+            with open(LOCAL_CONFIG_FILE, encoding="utf-8") as f:
                 data = json.load(f)
-                local_config = LocalConfig.from_dict(data.get('local', data))
-                projects = [Project.from_dict(p) for p in data.get('projects', [])]
+                local_config = LocalConfig.from_dict(data.get("local", data))
+                projects = [Project.from_dict(p) for p in data.get("projects", [])]
         except OSError as e:
             print(f"Fehler beim Lesen der Konfigurationsdatei: {e}")
         except json.JSONDecodeError as e:
@@ -329,23 +340,27 @@ def load_config() -> Config:
             print("Migriere alte Konfiguration...")
 
             # Extrahiere project_root aus erstem Projekt
-            old_projects = old_data.get('projects', [])
+            old_projects = old_data.get("projects", [])
             if old_projects:
-                first_path = old_projects[0].get('path', '')
+                first_path = old_projects[0].get("path", "")
                 if first_path:
                     local_config.project_root = str(Path(first_path).parent)
 
             # Provider migrieren
-            if 'providers' in old_data:
-                local_config.providers = [LLMProvider.from_dict(p) for p in old_data['providers']]
+            if "providers" in old_data:
+                local_config.providers = [
+                    LLMProvider.from_dict(p) for p in old_data["providers"]
+                ]
 
             # Andere Einstellungen
-            local_config.terminal_command = old_data.get('terminal_command', 'gnome-terminal')
-            local_config.default_start_command = old_data.get('default_start_command', './start.sh')
-            local_config.window_width = old_data.get('window_width', 800)
-            local_config.window_height = old_data.get('window_height', 600)
-            local_config.last_provider = old_data.get('last_provider', 'claude')
-            local_config.show_hidden = old_data.get('show_hidden', False)
+            local_config.terminal_command = old_data.get("terminal_command", "gnome-terminal")
+            local_config.default_start_command = old_data.get(
+                "default_start_command", "./start.sh"
+            )
+            local_config.window_width = old_data.get("window_width", 800)
+            local_config.window_height = old_data.get("window_height", 600)
+            local_config.last_provider = old_data.get("last_provider", "claude")
+            local_config.show_hidden = old_data.get("show_hidden", False)
 
             # Projekte migrieren
             projects = [Project.from_dict(p) for p in old_projects]
@@ -362,11 +377,11 @@ def save_config(config: Config):
     ensure_config_dir()
 
     data = {
-        'local': config.local.to_dict(),
-        'projects': [p.to_dict() for p in config.projects]
+        "local": config.local.to_dict(),
+        "projects": [p.to_dict() for p in config.projects],
     }
 
-    with open(LOCAL_CONFIG_FILE, 'w', encoding='utf-8') as f:
+    with open(LOCAL_CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
@@ -398,6 +413,7 @@ def update_project(config: Config, index: int, project: Project) -> Config:
 # Secret Store für Sync-Passwort
 try:
     from cindergrace_common import SecretStore
+
     _secret_store = SecretStore("cindergrace-launcher", warn_on_fallback=False)
 except ImportError:
     _secret_store = None
@@ -411,6 +427,7 @@ def get_sync_password() -> str | None:
     # Fallback ohne cindergrace_common
     try:
         import keyring
+
         return keyring.get_password("cindergrace-launcher", "sync")
     except ImportError:
         return None
@@ -424,12 +441,15 @@ def set_sync_password(password: str):
     if _secret_store:
         success = _secret_store.set("sync_password", password)
         if not success:
-            print("Hinweis: Passwort in Environment Variable gespeichert (Keyring nicht verfügbar)")
+            print(
+                "Hinweis: Passwort in Environment Variable gespeichert (Keyring nicht verfügbar)"
+            )
         return
 
     # Fallback ohne cindergrace_common
     try:
         import keyring
+
         keyring.set_password("cindergrace-launcher", "sync", password)
     except ImportError:
         print("Fehler: Weder cindergrace_common noch keyring verfügbar")

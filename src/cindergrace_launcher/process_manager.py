@@ -7,14 +7,14 @@ Cross-Platform Support für Windows, macOS und Linux
 
 import os
 import signal
-import subprocess
+import subprocess  # nosec B404 - needed for terminal/process management
 import sys
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
 # Gefährliche Shell-Zeichen die Command Injection ermöglichen
-INJECTION_CHARS = set(';|&`$(){}<>\n\r')
+INJECTION_CHARS = set(";|&`$(){}<>\n\r")
 
 
 def validate_command(cmd: str) -> tuple[bool, str]:
@@ -57,7 +57,9 @@ def get_default_terminal() -> str:
     platform = get_platform()
     if platform == "windows":
         # Prüfe auf Windows Terminal
-        wt_path = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WindowsApps", "wt.exe")
+        wt_path = os.path.join(
+            os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WindowsApps", "wt.exe"
+        )
         if os.path.exists(wt_path):
             return "wt"
         return "cmd"
@@ -68,7 +70,9 @@ def get_default_terminal() -> str:
         terminals = ["gnome-terminal", "konsole", "xfce4-terminal", "mate-terminal", "xterm"]
         for term in terminals:
             try:
-                result = subprocess.run(["which", term], capture_output=True, text=True)
+                result = subprocess.run(  # nosec B603 B607 - trusted which command
+                    ["which", term], capture_output=True, text=True
+                )
                 if result.returncode == 0:
                     return term
             except OSError:
@@ -79,6 +83,7 @@ def get_default_terminal() -> str:
 @dataclass
 class RunningSession:
     """Eine laufende LLM CLI Session"""
+
     project_path: str
     provider_id: str
     terminal_pid: int
@@ -109,17 +114,17 @@ class ProcessManager:
         if not self._pending_window_search:
             return False
 
-        title = self._pending_window_search['title']
-        project_path = self._pending_window_search['project_path']
-        callback = self._pending_window_search.get('callback')
-        attempts = self._pending_window_search.get('attempts', 0)
+        title = self._pending_window_search["title"]
+        project_path = self._pending_window_search["project_path"]
+        callback = self._pending_window_search.get("callback")
+        attempts = self._pending_window_search.get("attempts", 0)
 
         # Max 10 Versuche (= 2 Sekunden bei 200ms Intervall)
         if attempts >= 10:
             self._pending_window_search = None
             return False
 
-        self._pending_window_search['attempts'] = attempts + 1
+        self._pending_window_search["attempts"] = attempts + 1
 
         # Fenster suchen (nur auf Linux mit wmctrl)
         window_id = self._find_window_by_title(title)
@@ -143,7 +148,7 @@ class ProcessManager:
         provider_name: str = "",
         default_flags: str = "",
         skip_permissions_flag: str = "",
-        on_window_found: Callable[[str], None] | None = None
+        on_window_found: Callable[[str], None] | None = None,
     ) -> tuple[bool, str]:
         """
         Startet eine neue LLM CLI Session für ein Projekt.
@@ -191,17 +196,23 @@ class ProcessManager:
 
             # Platform-spezifischer Start
             if self.platform == "windows":
-                process = self._start_windows_terminal(project_path, project_name, display_name, full_cmd)
+                process = self._start_windows_terminal(
+                    project_path, project_name, display_name, full_cmd
+                )
             elif self.platform == "macos":
-                process = self._start_macos_terminal(project_path, project_name, display_name, full_cmd)
+                process = self._start_macos_terminal(
+                    project_path, project_name, display_name, full_cmd
+                )
             else:
-                process = self._start_linux_terminal(project_path, project_name, display_name, full_cmd)
+                process = self._start_linux_terminal(
+                    project_path, project_name, display_name, full_cmd
+                )
 
             session = RunningSession(
                 project_path=project_path,
                 provider_id=provider_id,
                 terminal_pid=process.pid,
-                window_id=None  # Wird asynchron gefunden (nur Linux)
+                window_id=None,  # Wird asynchron gefunden (nur Linux)
             )
 
             self.sessions[project_path] = session
@@ -209,9 +220,9 @@ class ProcessManager:
             # Window-Titel für spätere Suche speichern (nur Linux)
             if self.platform == "linux":
                 self._pending_window_search = {
-                    'title': f"{display_name}: {project_name}",
-                    'project_path': project_path,
-                    'callback': on_window_found
+                    "title": f"{display_name}: {project_name}",
+                    "project_path": project_path,
+                    "callback": on_window_found,
                 }
 
             return True, f"{display_name} gestartet"
@@ -223,53 +234,49 @@ class ProcessManager:
         except OSError as e:
             return False, f"System-Fehler: {str(e)}"
 
-    def _start_windows_terminal(self, project_path: str, project_name: str, display_name: str, full_cmd: str):
+    def _start_windows_terminal(
+        self, project_path: str, project_name: str, display_name: str, full_cmd: str
+    ):
         """Startet Terminal auf Windows"""
         safe_display_name = display_name.replace("'", "").replace('"', "")
         title = f"{safe_display_name}: {project_name}"
 
         if self.terminal_cmd == "wt":
             # Windows Terminal
-            cmd = [
-                "wt",
-                "--title", title,
-                "-d", project_path,
-                "cmd", "/k", full_cmd
-            ]
+            cmd = ["wt", "--title", title, "-d", project_path, "cmd", "/k", full_cmd]
         else:
             # Klassisches CMD
-            cmd = [
-                "cmd", "/c",
-                f'start "{title}" /d "{project_path}" cmd /k {full_cmd}'
-            ]
+            cmd = ["cmd", "/c", f'start "{title}" /d "{project_path}" cmd /k {full_cmd}']
 
-        return subprocess.Popen(
+        return subprocess.Popen(  # nosec B603 B607 - trusted terminal command
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
         )
 
-    def _start_macos_terminal(self, project_path: str, project_name: str, display_name: str, full_cmd: str):
+    def _start_macos_terminal(
+        self, project_path: str, project_name: str, display_name: str, full_cmd: str
+    ):
         """Startet Terminal auf macOS"""
         safe_display_name = display_name.replace("'", "").replace('"', "")
         end_message = f"{safe_display_name} beendet"
 
         # AppleScript für Terminal.app
-        script = f'''
+        script = f"""
         tell application "Terminal"
             activate
             do script "cd \\"{project_path}\\" && {full_cmd}; echo '{end_message}. Enter zum Schließen...'; read"
         end tell
-        '''
+        """
 
-        return subprocess.Popen(
-            ["osascript", "-e", script],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+        return subprocess.Popen(  # nosec B603 B607 - trusted osascript command
+            ["osascript", "-e", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
 
-    def _start_linux_terminal(self, project_path: str, project_name: str, display_name: str, full_cmd: str):
+    def _start_linux_terminal(
+        self, project_path: str, project_name: str, display_name: str, full_cmd: str
+    ):
         """Startet Terminal auf Linux"""
         safe_display_name = display_name.replace("'", "")
         end_message = f"{safe_display_name} beendet"
@@ -282,37 +289,42 @@ class ProcessManager:
                 f"--title={display_name}: {project_name}",
                 f"--working-directory={project_path}",
                 "--",
-                "bash", "-c",
-                f"{full_cmd}; echo '{end_message}. Enter zum Schließen...'; read"
+                "bash",
+                "-c",
+                f"{full_cmd}; echo '{end_message}. Enter zum Schließen...'; read",
             ]
         elif terminal == "konsole":
             cmd = [
                 self.terminal_cmd,
-                "--workdir", project_path,
-                "-e", "bash", "-c",
-                f"{full_cmd}; echo '{end_message}. Enter zum Schließen...'; read"
+                "--workdir",
+                project_path,
+                "-e",
+                "bash",
+                "-c",
+                f"{full_cmd}; echo '{end_message}. Enter zum Schließen...'; read",
             ]
         elif terminal == "xfce4-terminal":
             cmd = [
                 self.terminal_cmd,
                 f"--title={display_name}: {project_name}",
                 f"--working-directory={project_path}",
-                "-e", f"bash -c \"{full_cmd}; echo '{end_message}. Enter zum Schließen...'; read\""
+                "-e",
+                f"bash -c \"{full_cmd}; echo '{end_message}. Enter zum Schließen...'; read\"",
             ]
         else:
             # Fallback für xterm und andere
             cmd = [
                 self.terminal_cmd,
-                "-T", f"{display_name}: {project_name}",
-                "-e", "bash", "-c",
-                f"cd '{project_path}' && {full_cmd}; echo '{end_message}. Enter zum Schließen...'; read"
+                "-T",
+                f"{display_name}: {project_name}",
+                "-e",
+                "bash",
+                "-c",
+                f"cd '{project_path}' && {full_cmd}; echo '{end_message}. Enter zum Schließen...'; read",
             ]
 
-        return subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True
+        return subprocess.Popen(  # nosec B603 B607 - trusted terminal command
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
         )
 
     def stop_session(self, project_path: str) -> tuple[bool, str]:
@@ -325,9 +337,9 @@ class ProcessManager:
         try:
             if self.platform == "windows":
                 # Windows: Prozess und Kinder beenden
-                subprocess.run(
+                subprocess.run(  # nosec B603 B607 - trusted taskkill command
                     ["taskkill", "/F", "/T", "/PID", str(session.terminal_pid)],
-                    capture_output=True
+                    capture_output=True,
                 )
             else:
                 # Unix: Prozessgruppe beenden
@@ -354,11 +366,11 @@ class ProcessManager:
         try:
             if self.platform == "windows":
                 # Windows: Prüfen ob PID existiert
-                result = subprocess.run(
+                result = subprocess.run(  # nosec B603 B607 - trusted tasklist command
                     ["tasklist", "/FI", f"PID eq {session.terminal_pid}"],
                     capture_output=True,
                     text=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW
+                    creationflags=subprocess.CREATE_NO_WINDOW,
                 )
                 return str(session.terminal_pid) in result.stdout
             else:
@@ -393,10 +405,10 @@ class ProcessManager:
         if self.platform == "macos":
             # macOS: Terminal aktivieren
             try:
-                subprocess.run(
+                subprocess.run(  # nosec B603 B607 - trusted osascript command
                     ["osascript", "-e", 'tell application "Terminal" to activate'],
                     check=True,
-                    capture_output=True
+                    capture_output=True,
                 )
                 return True, "Terminal aktiviert"
             except subprocess.CalledProcessError:
@@ -412,10 +424,8 @@ class ProcessManager:
 
         if session.window_id:
             try:
-                subprocess.run(
-                    ["wmctrl", "-i", "-a", session.window_id],
-                    check=True,
-                    capture_output=True
+                subprocess.run(  # nosec B603 B607 - trusted wmctrl command
+                    ["wmctrl", "-i", "-a", session.window_id], check=True, capture_output=True
                 )
                 return True, "Fenster aktiviert"
             except subprocess.CalledProcessError:
@@ -425,10 +435,10 @@ class ProcessManager:
 
         # Fallback: Versuche über xdotool
         try:
-            subprocess.run(
+            subprocess.run(  # nosec B603 B607 - trusted xdotool command
                 ["xdotool", "search", "--pid", str(session.terminal_pid), "windowactivate"],
                 check=True,
-                capture_output=True
+                capture_output=True,
             )
             return True, "Fenster aktiviert"
         except subprocess.CalledProcessError:
@@ -442,12 +452,10 @@ class ProcessManager:
             return None
 
         try:
-            result = subprocess.run(
-                ["wmctrl", "-l"],
-                capture_output=True,
-                text=True
+            result = subprocess.run(  # nosec B603 B607 - trusted wmctrl command
+                ["wmctrl", "-l"], capture_output=True, text=True
             )
-            for line in result.stdout.strip().split('\n'):
+            for line in result.stdout.strip().split("\n"):
                 if title in line:
                     return line.split()[0]
         except (subprocess.CalledProcessError, FileNotFoundError, OSError):
@@ -460,12 +468,10 @@ class ProcessManager:
             return None
 
         try:
-            result = subprocess.run(
-                ["wmctrl", "-lp"],
-                capture_output=True,
-                text=True
+            result = subprocess.run(  # nosec B603 B607 - trusted wmctrl command
+                ["wmctrl", "-lp"], capture_output=True, text=True
             )
-            for line in result.stdout.strip().split('\n'):
+            for line in result.stdout.strip().split("\n"):
                 parts = line.split()
                 if len(parts) >= 3 and parts[2] == str(pid):
                     return parts[0]

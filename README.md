@@ -1,5 +1,8 @@
 # Cindergrace Launcher
 
+**Status:** Final
+
+
 **Cross-Platform GUI zur Verwaltung von LLM CLI Sessions für verschiedene Projekte.**
 
 Basiert auf PySide6 (Qt6) und läuft auf Windows, macOS und Linux.

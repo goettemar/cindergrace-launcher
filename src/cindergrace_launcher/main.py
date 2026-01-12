@@ -45,8 +45,9 @@ class SingleInstance:
             self.server = QLocalServer()
             self.server.newConnection.connect(self._on_new_connection)
             if not self.server.listen(socket_name):
-                print(f"Warnung: Konnte Single-Instance Server nicht starten: "
-                      f"{self.server.errorString()}")
+                print(
+                    f"Warnung: Konnte Single-Instance Server nicht starten: {self.server.errorString()}"
+                )
 
     def set_window(self, window):
         """Setzt das Hauptfenster fuer Aktivierung"""

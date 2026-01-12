@@ -26,7 +26,7 @@ def derive_key(password: str, salt: bytes) -> bytes:
         salt=salt,
         iterations=KDF_ITERATIONS,
     )
-    return kdf.derive(password.encode('utf-8'))
+    return kdf.derive(password.encode("utf-8"))
 
 
 def encrypt_data(data: dict, password: str) -> bytes:
@@ -39,7 +39,7 @@ def encrypt_data(data: dict, password: str) -> bytes:
     key = derive_key(password, salt)
 
     # Daten zu JSON serialisieren
-    plaintext = json.dumps(data, ensure_ascii=False).encode('utf-8')
+    plaintext = json.dumps(data, ensure_ascii=False).encode("utf-8")
 
     # Verschlüsseln mit AES-GCM (authentifizierte Verschlüsselung)
     aesgcm = AESGCM(key)
@@ -56,8 +56,8 @@ def decrypt_data(encrypted: bytes, password: str) -> dict | None:
 
     # Salt, Nonce und Ciphertext extrahieren
     salt = encrypted[:SALT_SIZE]
-    nonce = encrypted[SALT_SIZE:SALT_SIZE + NONCE_SIZE]
-    ciphertext = encrypted[SALT_SIZE + NONCE_SIZE:]
+    nonce = encrypted[SALT_SIZE : SALT_SIZE + NONCE_SIZE]
+    ciphertext = encrypted[SALT_SIZE + NONCE_SIZE :]
 
     # Key ableiten
     key = derive_key(password, salt)
@@ -68,7 +68,7 @@ def decrypt_data(encrypted: bytes, password: str) -> dict | None:
         plaintext = aesgcm.decrypt(nonce, ciphertext, None)
 
         # JSON parsen
-        return json.loads(plaintext.decode('utf-8'))
+        return json.loads(plaintext.decode("utf-8"))
     except (
         # Cryptography: Falsches Passwort oder korrupte Daten
         # InvalidTag wird bei AES-GCM geworfen wenn Authentifizierung fehlschlägt
@@ -85,6 +85,7 @@ def decrypt_data(encrypted: bytes, password: str) -> dict | None:
 @dataclass
 class SyncProject:
     """Projekt-Daten für Sync (ohne lokale Pfade)"""
+
     name: str
     relative_path: str  # Relativer Pfad vom project_root
     description: str = ""
@@ -98,18 +99,26 @@ class SyncProject:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'SyncProject':
-        known_fields = {'name', 'relative_path', 'description', 'category',
-                       'default_provider', 'custom_start_command', 'hidden', 'favorite'}
+    def from_dict(cls, data: dict) -> "SyncProject":
+        known_fields = {
+            "name",
+            "relative_path",
+            "description",
+            "category",
+            "default_provider",
+            "custom_start_command",
+            "hidden",
+            "favorite",
+        }
         filtered = {k: v for k, v in data.items() if k in known_fields}
         # Defaults für fehlende Felder
         defaults = {
-            'description': '',
-            'category': 'Allgemein',
-            'default_provider': 'claude',
-            'custom_start_command': '',
-            'hidden': False,
-            'favorite': False
+            "description": "",
+            "category": "Allgemein",
+            "default_provider": "claude",
+            "custom_start_command": "",
+            "hidden": False,
+            "favorite": False,
         }
         for k, v in defaults.items():
             if k not in filtered:
@@ -120,21 +129,16 @@ class SyncProject:
 @dataclass
 class SyncData:
     """Container für alle gesynchten Daten"""
+
     projects: list  # Liste von SyncProject dicts
     version: int = 1
 
     def to_dict(self) -> dict:
-        return {
-            'version': self.version,
-            'projects': self.projects
-        }
+        return {"version": self.version, "projects": self.projects}
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'SyncData':
-        return cls(
-            projects=data.get('projects', []),
-            version=data.get('version', 1)
-        )
+    def from_dict(cls, data: dict) -> "SyncData":
+        return cls(projects=data.get("projects", []), version=data.get("version", 1))
 
 
 class SyncManager:
@@ -176,7 +180,7 @@ class SyncManager:
                     # Versuchen zu entschlüsseln
                     encrypted = file_path.read_bytes()
                     data = decrypt_data(encrypted, self.password)
-                    if data and 'projects' in data and 'version' in data:
+                    if data and "projects" in data and "version" in data:
                         return file_path
                 except (OSError, PermissionError):
                     continue
@@ -200,7 +204,7 @@ class SyncManager:
 
             # Daten vorbereiten
             sync_data = SyncData(
-                projects=[p.to_dict() if hasattr(p, 'to_dict') else p for p in projects]
+                projects=[p.to_dict() if hasattr(p, "to_dict") else p for p in projects]
             )
 
             # Verschlüsseln und speichern
