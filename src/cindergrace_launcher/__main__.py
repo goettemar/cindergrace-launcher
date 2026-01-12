@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Entry point for running as module: python -m cindergrace_launcher
-"""
+"""Entry point for running as module: python -m cindergrace_launcher."""
 
 from .main import main
 

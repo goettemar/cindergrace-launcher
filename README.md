@@ -2,63 +2,64 @@
 
 **Status:** Final
 
+> **Note:** This is a hobby/experimental project. Use at your own risk.
 
-**Cross-Platform GUI zur Verwaltung von LLM CLI Sessions für verschiedene Projekte.**
+**Cross-platform GUI for managing LLM CLI sessions across multiple projects.**
 
-Basiert auf PySide6 (Qt6) und läuft auf Windows, macOS und Linux.
+Built with PySide6 (Qt6), runs on Windows, macOS, and Linux.
 
-**Unterstützte LLM CLIs:**
+**Supported LLM CLIs:**
 - Claude Code (Anthropic)
 - Codex CLI (OpenAI)
 - Gemini CLI (Google)
-- Weitere Provider konfigurierbar
+- Additional providers configurable
 
 ## Features
 
-- **Cross-Platform**: Windows, macOS und Linux
-- **Multi-Provider**: Flexibel zwischen Claude, Codex und Gemini wechseln
-- **Projektverwaltung**: Projekte hinzufügen, bearbeiten und entfernen
-- **Session-Steuerung**: LLM CLI Sessions starten und beenden
-- **Provider-Auswahl**: Beim Start den gewünschten Provider wählen
-- **Status-Anzeige**: Übersicht über laufende Sessions mit Provider-Info
-- **Fenster-Fokus**: Laufende Terminal-Fenster in den Vordergrund bringen (Linux)
-- **Kategorien**: Projekte nach Kategorien organisieren
-- **Sync**: Konfiguration verschlüsselt über Cloud-Dienste synchronisieren
-- **Konfigurierbar**: Terminal-Befehl und CLI-Pfade pro Provider anpassbar
+- **Cross-Platform**: Windows, macOS, and Linux
+- **Multi-Provider**: Flexibly switch between Claude, Codex, and Gemini
+- **Project Management**: Add, edit, and remove projects
+- **Session Control**: Start and stop LLM CLI sessions
+- **Provider Selection**: Choose your preferred provider at startup
+- **Status Display**: Overview of running sessions with provider info
+- **Window Focus**: Bring running terminal windows to foreground (Linux)
+- **Categories**: Organize projects by categories
+- **Sync**: Synchronize configuration encrypted via cloud services
+- **Configurable**: Terminal command and CLI paths customizable per provider
 
-## Voraussetzungen
+## Requirements
 
 - Python 3.10+
 - PySide6 (Qt6)
-- Mindestens ein LLM CLI installiert:
+- At least one LLM CLI installed:
   - Claude CLI: `npm install -g @anthropic-ai/claude-code`
   - Codex CLI: `npm install -g @openai/codex`
-  - Gemini CLI: `npm install -g @anthropic/gemini-cli`
+  - Gemini CLI: `npm install -g @google/gemini-cli`
 
 ### Linux
 
 ```bash
-# Optional für Fenster-Fokus
+# Optional for window focus
 sudo apt install wmctrl xdotool
 ```
 
 ### Windows
 
-- Windows Terminal empfohlen (automatisch erkannt wenn vorhanden)
+- Windows Terminal recommended (automatically detected if available)
 
 ### macOS
 
-- Terminal.app wird automatisch verwendet
+- Terminal.app is used automatically
 
 ## Installation
 
-### Via pip (empfohlen)
+### Via pip (recommended)
 
 ```bash
 pip install cindergrace-launcher
 ```
 
-### Aus Source
+### From Source
 
 ```bash
 git clone https://github.com/goettemar/cindergrace-launcher
@@ -66,105 +67,105 @@ cd cindergrace-launcher
 pip install -e .
 ```
 
-## Nutzung
+## Usage
 
-### Starten
+### Starting
 
 ```bash
-# Nach pip install
+# After pip install
 cindergrace-launcher
 
-# Oder aus dem Projektverzeichnis
+# Or from project directory
 ./start.sh       # Linux/macOS
 start.bat        # Windows
 ```
 
-### Projekte verwalten
+### Managing Projects
 
-- **Hinzufügen**: Klick auf `+` Button
-- **Bearbeiten**: Klick auf das Stift-Symbol
-- **Entfernen**: Klick auf das Papierkorb-Symbol
+- **Add**: Click the `+` button
+- **Edit**: Click the pencil icon
+- **Remove**: Click the trash icon
 
-### Sessions steuern
+### Controlling Sessions
 
-- **Starten**: Play-Symbol - öffnet Dropdown zur Provider-Auswahl
-- **Stoppen**: Stop-Symbol (rot) - nur bei laufenden Sessions
-- **Fokussieren**: Fenster-Symbol - bringt Terminal in den Vordergrund (Linux)
+- **Start**: Play icon - opens dropdown for provider selection
+- **Stop**: Stop icon (red) - only for running sessions
+- **Focus**: Window icon - brings terminal to foreground (Linux)
 
-### Provider wechseln
+### Switching Providers
 
-Der Provider kann flexibel beim Starten einer Session gewählt werden:
-1. Klick auf Play-Symbol
-2. Provider aus dem Dropdown wählen (Claude, Codex, Gemini)
+The provider can be flexibly chosen when starting a session:
+1. Click the play icon
+2. Select provider from dropdown (Claude, Codex, Gemini)
 
-## Konfiguration
+## Configuration
 
-Gespeichert unter:
+Stored at:
 - Linux: `~/.config/cindergrace-launcher/config.json`
 - Windows: `%APPDATA%/cindergrace-launcher/config.json`
 - macOS: `~/Library/Application Support/cindergrace-launcher/config.json`
 
-### Allgemeine Einstellungen
+### General Settings
 
-| Einstellung     | Standard (Linux)  | Standard (Windows)  |
-|-----------------|-------------------|---------------------|
-| Terminal-Befehl | gnome-terminal    | wt / cmd            |
+| Setting          | Default (Linux)   | Default (Windows) |
+|------------------|-------------------|-------------------|
+| Terminal Command | gnome-terminal    | wt / cmd          |
 
-### Provider-Einstellungen (pro Provider)
+### Provider Settings (per provider)
 
-| Einstellung       | Beschreibung                          |
-|-------------------|---------------------------------------|
-| Aktiviert         | Provider in der Auswahl anzeigen      |
-| CLI Befehl        | Pfad/Befehl zum CLI-Tool              |
-| Skip-Flag         | Automatische Bestätigung              |
+| Setting      | Description                           |
+|--------------|---------------------------------------|
+| Enabled      | Show provider in selection            |
+| CLI Command  | Path/command to CLI tool              |
+| Skip Flag    | Automatic confirmation                |
 
-### Standard Provider
+### Default Providers
 
-| Provider | Standard-Befehl              | Auto-Flag                         |
-|----------|------------------------------|-----------------------------------|
-| Claude   | claude                       | --dangerously-skip-permissions    |
-| Codex    | codex                        | --full-auto                       |
-| Gemini   | gemini                       | --yolo                            |
+| Provider | Default Command | Auto Flag                         |
+|----------|-----------------|-----------------------------------|
+| Claude   | claude          | --dangerously-skip-permissions    |
+| Codex    | codex           | --full-auto                       |
+| Gemini   | gemini          | --yolo                            |
 
-## Projektstruktur
+## Project Structure
 
 ```
 cindergrace-launcher/
 ├── src/cindergrace_launcher/
 │   ├── __init__.py
-│   ├── __main__.py        # python -m Einstieg
-│   ├── main.py            # Qt App Initialisierung
-│   ├── cockpit.py         # Hauptfenster und UI (PySide6)
-│   ├── dialogs.py         # Dialoge (PySide6)
-│   ├── config.py          # Konfigurationsverwaltung
-│   ├── sync.py            # Verschlüsselte Sync-Funktion
-│   ├── process_manager.py # Cross-Platform Session-Verwaltung
-│   └── providers.py       # LLM Provider Definitionen
-├── start.sh               # Linux/macOS Starter
-├── start.bat              # Windows Starter
-├── pyproject.toml         # Python Package Definition
+│   ├── __main__.py        # python -m entry point
+│   ├── main.py            # Qt App initialization
+│   ├── cockpit.py         # Main window and UI (PySide6)
+│   ├── dialogs.py         # Dialogs (PySide6)
+│   ├── config.py          # Configuration management
+│   ├── sync.py            # Encrypted sync function
+│   ├── process_manager.py # Cross-platform session management
+│   └── providers.py       # LLM Provider definitions
+├── start.sh               # Linux/macOS starter
+├── start.bat              # Windows starter
+├── pyproject.toml         # Python package definition
 └── README.md
 ```
 
-## Sync-Funktion
+## Sync Function
 
-Die Konfiguration kann verschlüsselt über Cloud-Dienste (Google Drive, Dropbox, etc.) synchronisiert werden:
+The configuration can be synchronized encrypted via cloud services (Google Drive, Dropbox, etc.):
 
-1. Sync-Ordner in den Einstellungen konfigurieren
-2. Passwort für Verschlüsselung setzen
-3. "Exportieren" zum Speichern / "Importieren" zum Laden
+1. Configure sync folder in settings
+2. Set password for encryption
+3. "Export" to save / "Import" to load
 
-Die Sync-Datei ist AES-256 verschlüsselt.
+The sync file is AES-256 encrypted.
 
-## Weitere Provider hinzufügen
+## Adding More Providers
 
-Provider sind in `src/cindergrace_launcher/providers.py` definiert. Oder über die Einstellungen der GUI konfigurierbar.
+Providers are defined in `src/cindergrace_launcher/providers.py`. Or configurable via the GUI settings.
 
-## Bekannte Einschränkungen
+## Known Limitations
 
-- **Windows**: Fenster-Fokussierung nicht unterstützt
-- **Wayland**: Fenster-Fokus funktioniert möglicherweise nicht auf Linux
+- **Windows**: Window focus not supported
+- **Wayland**: Window focus may not work on Linux
 
-## Lizenz
+## License
 
 MIT License

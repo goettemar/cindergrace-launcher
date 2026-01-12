@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cindergrace-launcher"
 version = "1.1.0"
-description = "Cindergrace Launcher - Cross-Platform GUI für Claude, Codex, Gemini und andere LLM CLIs"
+description = "Cindergrace Launcher - Cross-Platform GUI for Claude, Codex, Gemini and other LLM CLIs"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [

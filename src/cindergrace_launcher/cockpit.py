@@ -1,7 +1,7 @@
-"""
-Cindergrace Launcher - Hauptfenster
-PySide6-basierte Cross-Platform GUI zur Verwaltung von LLM CLI Sessions
-Unterstützt: Vollständig konfigurierbare Provider + Sync
+"""Cindergrace Launcher - Hauptfenster.
+
+PySide6-basierte Cross-Platform GUI zur Verwaltung von LLM CLI Sessions.
+Unterstützt: Vollständig konfigurierbare Provider + Sync.
 """
 
 import os
@@ -149,7 +149,7 @@ QStatusBar {
 
 
 class ProjectWidget(QFrame):
-    """Ein Projekt-Eintrag in der Liste"""
+    """Ein Projekt-Eintrag in der Liste."""
 
     def __init__(
         self,
@@ -160,6 +160,7 @@ class ProjectWidget(QFrame):
         config: Config,
         parent=None,
     ):
+        """Initialisiert ein Listenelement für ein Projekt."""
         super().__init__(parent)
         self.project = project
         self.index = index
@@ -338,9 +339,10 @@ class ProjectWidget(QFrame):
 
 
 class LauncherWindow(QMainWindow):
-    """Hauptfenster des Cindergrace Launcher"""
+    """Hauptfenster des Cindergrace Launcher."""
 
     def __init__(self):
+        """Initialisiert das Hauptfenster und lädt die Konfiguration."""
         super().__init__()
         self.setWindowTitle("Cindergrace Launcher")
         self.setMinimumSize(900, 650)
@@ -451,7 +453,7 @@ class LauncherWindow(QMainWindow):
         self.status_bar.addWidget(self.status_label)
 
     def _update_category_filter(self):
-        """Aktualisiert das Kategorie-Dropdown"""
+        """Aktualisiert das Kategorie-Dropdown."""
         current = self.category_combo.currentText()
         self.category_combo.clear()
         categories = ["Alle"]
@@ -476,7 +478,7 @@ class LauncherWindow(QMainWindow):
         self._refresh_list()
 
     def _filter_projects(self) -> list:
-        """Filtert Projekte nach Suchtext, Kategorie und Hidden-Status"""
+        """Filtert Projekte nach Suchtext, Kategorie und Hidden-Status."""
         filtered = []
         for i, p in enumerate(self.config.projects):
             if p.hidden and not self.config.show_hidden:
@@ -501,7 +503,7 @@ class LauncherWindow(QMainWindow):
         return filtered
 
     def _refresh_list(self):
-        """Aktualisiert die Projektliste"""
+        """Aktualisiert die Projektliste."""
         # Clear existing widgets
         while self.list_layout.count() > 1:
             item = self.list_layout.takeAt(0)
@@ -546,12 +548,12 @@ class LauncherWindow(QMainWindow):
         self.status_label.setText(status)
 
     def _auto_refresh(self):
-        """Auto-Refresh: Nur Status aktualisieren"""
+        """Auto-Refresh: Nur Status aktualisieren."""
         self.process_manager.cleanup_dead_sessions()
         self._update_status()
 
     def _update_status(self):
-        """Aktualisiert nur die Status-Anzeige"""
+        """Aktualisiert nur die Status-Anzeige."""
         running_count = sum(
             1
             for p in self.config.projects
@@ -568,19 +570,19 @@ class LauncherWindow(QMainWindow):
         self.status_label.setText(status)
 
     def _poll_for_window(self):
-        """Pollt nach neuem Fenster"""
+        """Pollt nach neuem Fenster."""
         if self.process_manager.poll_for_window():
             return  # Weiter pollen
         self.poll_timer.stop()
 
     def show_toast(self, message: str):
-        """Zeigt eine Toast-Nachricht"""
+        """Zeigt eine Toast-Nachricht."""
         self.status_bar.showMessage(message, 3000)
 
     # === Actions ===
 
     def start_custom(self, project: Project):
-        """Startet den Custom Start-Befehl"""
+        """Startet den Custom Start-Befehl."""
         abs_path = self.config.get_project_absolute_path(project)
         start_cmd = self.config.get_start_command(project)
 
@@ -620,7 +622,7 @@ class LauncherWindow(QMainWindow):
             self.show_toast(f"Prozess-Fehler: {e}")
 
     def start_session(self, path: str, name: str, provider_id: str):
-        """Startet eine LLM CLI Session"""
+        """Startet eine LLM CLI Session."""
         provider = self.config.get_provider(provider_id)
         if not provider:
             self.show_toast(f"Provider nicht gefunden: {provider_id}")
@@ -646,6 +648,7 @@ class LauncherWindow(QMainWindow):
         self._refresh_list()
 
     def stop_session(self, path: str):
+        """Stoppt eine laufende Session für das Projekt."""
         success, message = self.process_manager.stop_session(path)
         if success:
             self.show_toast("Session beendet")
@@ -654,17 +657,20 @@ class LauncherWindow(QMainWindow):
         self._refresh_list()
 
     def focus_session(self, path: str):
+        """Fokussiert das Fenster einer laufenden Session."""
         success, message = self.process_manager.focus_window(path)
         if not success:
             self.show_toast(message)
 
     def toggle_hidden(self, index: int):
+        """Schaltet die Sichtbarkeit eines Projekts um."""
         if 0 <= index < len(self.config.projects):
             self.config.projects[index].hidden = not self.config.projects[index].hidden
             save_config(self.config)
             self._refresh_list()
 
     def toggle_favorite(self, index: int):
+        """Schaltet den Favoritenstatus eines Projekts um."""
         if 0 <= index < len(self.config.projects):
             self.config.projects[index].favorite = not self.config.projects[index].favorite
             save_config(self.config)
@@ -674,11 +680,12 @@ class LauncherWindow(QMainWindow):
         self._show_project_dialog(None, -1)
 
     def edit_project(self, index: int):
+        """Öffnet den Dialog zum Bearbeiten eines Projekts."""
         if 0 <= index < len(self.config.projects):
             self._show_project_dialog(self.config.projects[index], index)
 
     def _show_project_dialog(self, project: Project | None, index: int):
-        """Zeigt Dialog zum Hinzufügen/Bearbeiten eines Projekts"""
+        """Zeigt Dialog zum Hinzufügen/Bearbeiten eines Projekts."""
         from .dialogs import ProjectDialog
 
         saved_project: Project | None = None
@@ -700,6 +707,7 @@ class LauncherWindow(QMainWindow):
             self._refresh_list()
 
     def delete_project(self, index: int):
+        """Löscht ein Projekt anhand des Index."""
         if 0 <= index < len(self.config.projects):
             project = self.config.projects[index]
 
@@ -717,7 +725,7 @@ class LauncherWindow(QMainWindow):
                 self.show_toast("Projekt entfernt")
 
     def _on_about(self):
-        """Zeigt About-Dialog"""
+        """Zeigt About-Dialog."""
         QMessageBox.about(
             self,
             "Über Cindergrace Launcher",
@@ -730,7 +738,7 @@ class LauncherWindow(QMainWindow):
         )
 
     def _on_settings(self):
-        """Öffnet Einstellungs-Dialog"""
+        """Öffnet Einstellungs-Dialog."""
         from .dialogs import SettingsDialog
 
         def on_save(config):
@@ -770,7 +778,7 @@ class LauncherWindow(QMainWindow):
 
 
 def main():
-    """Wird von __init__.py aufgerufen für Rückwärtskompatibilität"""
+    """Wird von __init__.py aufgerufen für Rückwärtskompatibilität."""
     from .main import main as entry_main
 
     entry_main()
