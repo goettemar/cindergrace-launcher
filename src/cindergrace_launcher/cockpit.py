@@ -661,19 +661,23 @@ class LauncherWindow(QMainWindow):
         """Zeigt Dialog zum Hinzufügen/Bearbeiten eines Projekts"""
         from .dialogs import ProjectDialog
 
-        dialog = ProjectDialog(self, self.config, project)
-        if dialog.exec() == QDialog.Accepted:
-            new_project = dialog.get_project()
-            if new_project:
-                if project is not None:
-                    self.config = update_project(self.config, index, new_project)
-                    self.show_toast(f"Projekt aktualisiert: {new_project.name}")
-                else:
-                    self.config = add_project(self.config, new_project)
-                    self.show_toast(f"Projekt hinzugefügt: {new_project.name}")
+        saved_project: Project | None = None
 
-                self._update_category_filter()
-                self._refresh_list()
+        def on_save(new_project: Project):
+            nonlocal saved_project
+            saved_project = new_project
+
+        dialog = ProjectDialog(self, self.config, project, on_save=on_save)
+        if dialog.exec() == QDialog.Accepted and saved_project:
+            if project is not None:
+                self.config = update_project(self.config, index, saved_project)
+                self.show_toast(f"Projekt aktualisiert: {saved_project.name}")
+            else:
+                self.config = add_project(self.config, saved_project)
+                self.show_toast(f"Projekt hinzugefügt: {saved_project.name}")
+
+            self._update_category_filter()
+            self._refresh_list()
 
     def delete_project(self, index: int):
         if 0 <= index < len(self.config.projects):
