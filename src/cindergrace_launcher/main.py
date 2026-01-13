@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-"""
-Cindergrace Launcher - Haupteinstiegspunkt
-Verwaltet LLM CLI Sessions (Claude, Codex, Gemini) für verschiedene Projekte
+"""Cindergrace Launcher - Main entry point.
+
+Manages LLM CLI sessions (Claude, Codex, Gemini) for various projects.
 """
 
 import os
 import sys
 
-# Eindeutiger Name fuer Single-Instance Socket
+# Unique name for single-instance socket
 SOCKET_NAME = "cindergrace-launcher-single-instance"
 
 
 class SingleInstance:
-    """
-    Stellt sicher, dass nur eine Instanz der Anwendung laeuft.
-    Bei zweitem Start wird die existierende Instanz aktiviert.
+    """Ensures only one instance of the application runs.
+
+    On second start, the existing instance is activated.
     """
 
     def __init__(self, socket_name: str):
+        """Initialize the single-instance server."""
         from PySide6.QtNetwork import QLocalServer, QLocalSocket
 
         self.socket_name = socket_name
@@ -25,41 +26,41 @@ class SingleInstance:
         self.is_running = False
         self.window = None
 
-        # Versuche, mit existierender Instanz zu verbinden
+        # Try to connect to existing instance
         socket = QLocalSocket()
         socket.connectToServer(socket_name)
 
         if socket.waitForConnected(500):
-            # Andere Instanz laeuft - Signal senden und beenden
+            # Other instance is running - send signal and exit
             self.is_running = True
             socket.write(b"activate")
             socket.waitForBytesWritten(1000)
             socket.disconnectFromServer()
         else:
-            # Keine andere Instanz - Server starten
+            # No other instance - start server
             self.is_running = False
 
-            # Alten Socket entfernen falls vorhanden (nach Crash)
+            # Remove old socket if present (after crash)
             QLocalServer.removeServer(socket_name)
 
             self.server = QLocalServer()
             self.server.newConnection.connect(self._on_new_connection)
             if not self.server.listen(socket_name):
                 print(
-                    f"Warnung: Konnte Single-Instance Server nicht starten: {self.server.errorString()}"
+                    f"Warning: Could not start single-instance server: {self.server.errorString()}"
                 )
 
     def set_window(self, window):
-        """Setzt das Hauptfenster fuer Aktivierung"""
+        """Set the main window for activation."""
         self.window = window
 
     def _on_new_connection(self):
-        """Wird aufgerufen wenn eine andere Instanz sich verbindet"""
+        """Handle a connection from another instance."""
         if self.server:
             socket = self.server.nextPendingConnection()
             if socket:
                 socket.waitForReadyRead(1000)
-                # Fenster aktivieren
+                # Activate window
                 if self.window:
                     self.window.showNormal()
                     self.window.raise_()
@@ -67,14 +68,14 @@ class SingleInstance:
                 socket.disconnectFromServer()
 
     def cleanup(self):
-        """Raumt den Server auf"""
+        """Clean up the server."""
         if self.server:
             self.server.close()
 
 
 def main():
-    """Hauptfunktion - startet die Qt-Anwendung"""
-    # Fuege cindergrace_common hinzu falls als Nachbar-Ordner vorhanden
+    """Start the Qt application."""
+    # Add cindergrace_common if present as neighbor folder
     script_dir = os.path.dirname(os.path.abspath(__file__))
     common_src = os.path.join(script_dir, "..", "..", "..", "cindergrace_common", "src")
     if os.path.isdir(common_src):
@@ -96,9 +97,16 @@ def main():
     # Single-Instance Check
     single_instance = SingleInstance(SOCKET_NAME)
     if single_instance.is_running:
-        # Andere Instanz wurde aktiviert - still beenden
-        print("Cindergrace Launcher laeuft bereits - aktiviere existierendes Fenster")
+        # Other instance was activated - exit silently
+        print("Cindergrace Launcher is already running - activating existing window")
         sys.exit(0)
+
+    # Initialize i18n with saved language preference
+    from .config import load_config
+    from .i18n import set_language
+
+    config = load_config()
+    set_language(config.language)
 
     from .cockpit import LauncherWindow
 

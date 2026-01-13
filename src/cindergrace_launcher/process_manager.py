@@ -1,8 +1,8 @@
-"""
-Prozess-Management für LLM CLI Instanzen
-Verwaltet laufende Terminal-Sessions für verschiedene LLM Provider
+"""Process management for LLM CLI instances.
 
-Cross-Platform Support für Windows, macOS und Linux
+Manages running terminal sessions for various LLM providers.
+
+Cross-platform support for Windows, macOS, and Linux.
 """
 
 import os
@@ -13,37 +13,37 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
-# Gefährliche Shell-Zeichen die Command Injection ermöglichen
+# Dangerous shell characters that enable command injection
 INJECTION_CHARS = set(";|&`$(){}<>\n\r")
 
 
 def validate_command(cmd: str) -> tuple[bool, str]:
-    """
-    Validiert einen Befehl auf gefährliche Shell-Zeichen.
-    Erlaubt Windows-Pfade (Backslash) und gequotete Pfade (für Leerzeichen).
+    """Validates a command for dangerous shell characters.
+
+    Allows Windows paths (backslash) and quoted paths (for spaces).
     Returns: (is_valid, error_message)
     """
     if not cmd or not cmd.strip():
-        return False, "Befehl ist leer"
+        return False, "Command is empty"
 
-    # Prüfe auf Command-Injection-Zeichen (Shell-Operatoren)
+    # Check for command injection characters (shell operators)
     injection_found = [c for c in cmd if c in INJECTION_CHARS]
     if injection_found:
-        return False, f"Ungültige Zeichen im Befehl: {set(injection_found)}"
+        return False, f"Invalid characters in command: {set(injection_found)}"
 
-    # Prüfe auf unbalancierte Quotes (potentielle Injection)
+    # Check for unbalanced quotes (potential injection)
     single_quotes = cmd.count("'")
     double_quotes = cmd.count('"')
     if single_quotes % 2 != 0:
-        return False, "Unbalancierte einfache Anführungszeichen"
+        return False, "Unbalanced single quotes"
     if double_quotes % 2 != 0:
-        return False, "Unbalancierte doppelte Anführungszeichen"
+        return False, "Unbalanced double quotes"
 
     return True, ""
 
 
 def get_platform() -> str:
-    """Ermittelt die Plattform"""
+    """Determines the platform."""
     if sys.platform == "win32":
         return "windows"
     elif sys.platform == "darwin":
@@ -53,10 +53,10 @@ def get_platform() -> str:
 
 
 def get_default_terminal() -> str:
-    """Gibt das Standard-Terminal für die Plattform zurück"""
+    """Returns the default terminal for the platform."""
     platform = get_platform()
     if platform == "windows":
-        # Prüfe auf Windows Terminal
+        # Check for Windows Terminal
         wt_path = os.path.join(
             os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WindowsApps", "wt.exe"
         )
@@ -66,7 +66,7 @@ def get_default_terminal() -> str:
     elif platform == "macos":
         return "Terminal"
     else:
-        # Linux - prüfe verschiedene Terminals
+        # Linux - check various terminals
         terminals = ["gnome-terminal", "konsole", "xfce4-terminal", "mate-terminal", "xterm"]
         for term in terminals:
             try:
@@ -82,7 +82,7 @@ def get_default_terminal() -> str:
 
 @dataclass
 class RunningSession:
-    """Eine laufende LLM CLI Session"""
+    """A running LLM CLI session."""
 
     project_path: str
     provider_id: str
@@ -91,25 +91,27 @@ class RunningSession:
     started_at: float = 0.0
 
     def __post_init__(self):
+        """Sets the start time if not provided."""
         if self.started_at == 0.0:
             self.started_at = time.time()
 
 
 class ProcessManager:
-    """Verwaltet LLM CLI Prozesse - Cross-Platform"""
+    """Manages LLM CLI processes - cross-platform."""
 
     def __init__(self, terminal_cmd: str = ""):
+        """Initializes the ProcessManager."""
         self.platform = get_platform()
         self.terminal_cmd = terminal_cmd or get_default_terminal()
         self.sessions: dict[str, RunningSession] = {}  # project_path -> session
         self._pending_window_search: dict | None = None
 
     def poll_for_window(self) -> bool:
-        """
-        Sucht asynchron nach dem Fenster einer gestarteten Session.
-        Wird von QTimer aufgerufen.
+        """Asynchronously searches for the window of a started session.
 
-        Returns: True wenn weiter gepollt werden soll, False wenn fertig
+        Called by QTimer.
+
+        Returns: True if polling should continue, False if done
         """
         if not self._pending_window_search:
             return False
@@ -119,17 +121,17 @@ class ProcessManager:
         callback = self._pending_window_search.get("callback")
         attempts = self._pending_window_search.get("attempts", 0)
 
-        # Max 10 Versuche (= 2 Sekunden bei 200ms Intervall)
+        # Max 10 attempts (= 2 seconds at 200ms interval)
         if attempts >= 10:
             self._pending_window_search = None
             return False
 
         self._pending_window_search["attempts"] = attempts + 1
 
-        # Fenster suchen (nur auf Linux mit wmctrl)
+        # Search for window (Linux only with wmctrl)
         window_id = self._find_window_by_title(title)
         if window_id:
-            # Gefunden - Session updaten
+            # Found - update session
             if project_path in self.sessions:
                 self.sessions[project_path].window_id = window_id
                 if callback:
@@ -137,7 +139,7 @@ class ProcessManager:
             self._pending_window_search = None
             return False
 
-        return True  # Weiter suchen
+        return True  # Keep searching
 
     def start_session(
         self,
@@ -150,51 +152,59 @@ class ProcessManager:
         skip_permissions_flag: str = "",
         on_window_found: Callable[[str], None] | None = None,
     ) -> tuple[bool, str]:
-        """
-        Startet eine neue LLM CLI Session für ein Projekt.
+        """Starts a new LLM CLI session for a project.
 
         Args:
-            on_window_found: Optionaler Callback wenn Window-ID gefunden wird (für async UI-Update)
+            project_path: Absolute path to the project.
+            project_name: Display name of the project.
+            provider_id: ID of the provider.
+            provider_command: CLI command of the provider.
+            provider_name: Display name of the provider.
+            default_flags: Default flags for the provider.
+            skip_permissions_flag: Flag for automatic confirmation.
+            on_window_found: Optional callback when window ID is found.
 
-        Returns: (success, message)
+        Returns:
+            Tuple of success and status message.
+
         """
         if project_path in self.sessions:
             if self.is_running(project_path):
-                return False, "Session läuft bereits"
+                return False, "Session already running"
             else:
-                # Session war beendet, entfernen
+                # Session was ended, remove
                 del self.sessions[project_path]
 
         if not os.path.isdir(project_path):
-            return False, f"Pfad existiert nicht: {project_path}"
+            return False, f"Path does not exist: {project_path}"
 
-        # Fallback für Provider-Name
+        # Fallback for provider name
         display_name = provider_name or provider_id
 
-        # SECURITY: Befehle validieren
+        # SECURITY: Validate commands
         is_valid, error = validate_command(provider_command)
         if not is_valid:
-            return False, f"Ungültiger Provider-Befehl: {error}"
+            return False, f"Invalid provider command: {error}"
 
         if default_flags:
             is_valid, error = validate_command(default_flags)
             if not is_valid:
-                return False, f"Ungültige Default-Flags: {error}"
+                return False, f"Invalid default flags: {error}"
 
         if skip_permissions_flag:
             is_valid, error = validate_command(skip_permissions_flag)
             if not is_valid:
-                return False, f"Ungültiges Skip-Flag: {error}"
+                return False, f"Invalid skip flag: {error}"
 
         try:
-            # Vollständigen Befehl zusammenbauen (sicher, da validiert)
+            # Build full command (safe because validated)
             full_cmd = provider_command
             if default_flags:
                 full_cmd += f" {default_flags}"
             if skip_permissions_flag:
                 full_cmd += f" {skip_permissions_flag}"
 
-            # Platform-spezifischer Start
+            # Platform-specific start
             if self.platform == "windows":
                 process = self._start_windows_terminal(
                     project_path, project_name, display_name, full_cmd
@@ -212,12 +222,12 @@ class ProcessManager:
                 project_path=project_path,
                 provider_id=provider_id,
                 terminal_pid=process.pid,
-                window_id=None,  # Wird asynchron gefunden (nur Linux)
+                window_id=None,  # Found asynchronously (Linux only)
             )
 
             self.sessions[project_path] = session
 
-            # Window-Titel für spätere Suche speichern (nur Linux)
+            # Save window title for later search (Linux only)
             if self.platform == "linux":
                 self._pending_window_search = {
                     "title": f"{display_name}: {project_name}",
@@ -225,19 +235,19 @@ class ProcessManager:
                     "callback": on_window_found,
                 }
 
-            return True, f"{display_name} gestartet"
+            return True, f"{display_name} started"
 
         except FileNotFoundError:
-            return False, f"Terminal nicht gefunden: {self.terminal_cmd}"
+            return False, f"Terminal not found: {self.terminal_cmd}"
         except subprocess.SubprocessError as e:
-            return False, f"Prozess-Fehler: {str(e)}"
+            return False, f"Process error: {str(e)}"
         except OSError as e:
-            return False, f"System-Fehler: {str(e)}"
+            return False, f"System error: {str(e)}"
 
     def _start_windows_terminal(
         self, project_path: str, project_name: str, display_name: str, full_cmd: str
     ):
-        """Startet Terminal auf Windows"""
+        """Starts terminal on Windows."""
         safe_display_name = display_name.replace("'", "").replace('"', "")
         title = f"{safe_display_name}: {project_name}"
 
@@ -258,15 +268,15 @@ class ProcessManager:
     def _start_macos_terminal(
         self, project_path: str, project_name: str, display_name: str, full_cmd: str
     ):
-        """Startet Terminal auf macOS"""
+        """Starts terminal on macOS."""
         safe_display_name = display_name.replace("'", "").replace('"', "")
-        end_message = f"{safe_display_name} beendet"
+        end_message = f"{safe_display_name} finished"
 
-        # AppleScript für Terminal.app
+        # AppleScript for Terminal.app
         script = f"""
         tell application "Terminal"
             activate
-            do script "cd \\"{project_path}\\" && {full_cmd}; echo '{end_message}. Enter zum Schließen...'; read"
+            do script "cd \\"{project_path}\\" && {full_cmd}; echo '{end_message}. Press Enter to close...'; read"
         end tell
         """
 
@@ -277,11 +287,11 @@ class ProcessManager:
     def _start_linux_terminal(
         self, project_path: str, project_name: str, display_name: str, full_cmd: str
     ):
-        """Startet Terminal auf Linux"""
+        """Starts terminal on Linux."""
         safe_display_name = display_name.replace("'", "")
-        end_message = f"{safe_display_name} beendet"
+        end_message = f"{safe_display_name} finished"
 
-        terminal = self.terminal_cmd.split("/")[-1]  # Basis-Name extrahieren
+        terminal = self.terminal_cmd.split("/")[-1]  # Extract base name
 
         if terminal in ("gnome-terminal", "mate-terminal"):
             cmd = [
@@ -291,7 +301,7 @@ class ProcessManager:
                 "--",
                 "bash",
                 "-c",
-                f"{full_cmd}; echo '{end_message}. Enter zum Schließen...'; read",
+                f"{full_cmd}; echo '{end_message}. Press Enter to close...'; read",
             ]
         elif terminal == "konsole":
             cmd = [
@@ -301,7 +311,7 @@ class ProcessManager:
                 "-e",
                 "bash",
                 "-c",
-                f"{full_cmd}; echo '{end_message}. Enter zum Schließen...'; read",
+                f"{full_cmd}; echo '{end_message}. Press Enter to close...'; read",
             ]
         elif terminal == "xfce4-terminal":
             cmd = [
@@ -309,10 +319,10 @@ class ProcessManager:
                 f"--title={display_name}: {project_name}",
                 f"--working-directory={project_path}",
                 "-e",
-                f"bash -c \"{full_cmd}; echo '{end_message}. Enter zum Schließen...'; read\"",
+                f"bash -c \"{full_cmd}; echo '{end_message}. Press Enter to close...'; read\"",
             ]
         else:
-            # Fallback für xterm und andere
+            # Fallback for xterm and others
             cmd = [
                 self.terminal_cmd,
                 "-T",
@@ -320,7 +330,7 @@ class ProcessManager:
                 "-e",
                 "bash",
                 "-c",
-                f"cd '{project_path}' && {full_cmd}; echo '{end_message}. Enter zum Schließen...'; read",
+                f"cd '{project_path}' && {full_cmd}; echo '{end_message}. Press Enter to close...'; read",
             ]
 
         return subprocess.Popen(  # nosec B603 B607 - trusted terminal command
@@ -328,36 +338,36 @@ class ProcessManager:
         )
 
     def stop_session(self, project_path: str) -> tuple[bool, str]:
-        """Beendet eine LLM CLI Session"""
+        """Stops an LLM CLI session."""
         if project_path not in self.sessions:
-            return False, "Keine aktive Session"
+            return False, "No active session"
 
         session = self.sessions[project_path]
 
         try:
             if self.platform == "windows":
-                # Windows: Prozess und Kinder beenden
+                # Windows: Kill process and children
                 subprocess.run(  # nosec B603 B607 - trusted taskkill command
                     ["taskkill", "/F", "/T", "/PID", str(session.terminal_pid)],
                     capture_output=True,
                 )
             else:
-                # Unix: Prozessgruppe beenden
+                # Unix: Kill process group
                 os.killpg(os.getpgid(session.terminal_pid), signal.SIGTERM)
 
             del self.sessions[project_path]
-            return True, "Session beendet"
+            return True, "Session ended"
         except ProcessLookupError:
-            # Prozess existiert nicht mehr
+            # Process no longer exists
             del self.sessions[project_path]
-            return True, "Session war bereits beendet"
+            return True, "Session was already ended"
         except PermissionError as e:
-            return False, f"Keine Berechtigung zum Beenden: {str(e)}"
+            return False, f"No permission to end: {str(e)}"
         except OSError as e:
-            return False, f"System-Fehler beim Beenden: {str(e)}"
+            return False, f"System error while ending: {str(e)}"
 
     def is_running(self, project_path: str) -> bool:
-        """Prüft ob eine Session noch läuft"""
+        """Checks if a session is still running."""
         if project_path not in self.sessions:
             return False
 
@@ -365,7 +375,7 @@ class ProcessManager:
 
         try:
             if self.platform == "windows":
-                # Windows: Prüfen ob PID existiert
+                # Windows: Check if PID exists
                 result = subprocess.run(  # nosec B603 B607 - trusted tasklist command
                     ["tasklist", "/FI", f"PID eq {session.terminal_pid}"],
                     capture_output=True,
@@ -374,49 +384,49 @@ class ProcessManager:
                 )
                 return str(session.terminal_pid) in result.stdout
             else:
-                # Unix: Signal 0 sendet kein Signal, prüft nur ob Prozess existiert
+                # Unix: Signal 0 sends no signal, only checks if process exists
                 os.kill(session.terminal_pid, 0)
                 return True
         except ProcessLookupError:
             return False
         except PermissionError:
-            # Prozess existiert, aber wir haben keine Berechtigung
+            # Process exists but we don't have permission
             return True
         except OSError:
             return False
 
     def get_session_provider(self, project_path: str) -> str | None:
-        """Gibt die Provider-ID einer laufenden Session zurück"""
+        """Returns the provider ID of a running session."""
         if project_path in self.sessions:
             return self.sessions[project_path].provider_id
         return None
 
     def focus_window(self, project_path: str) -> tuple[bool, str]:
-        """Bringt das Terminal-Fenster in den Vordergrund"""
+        """Brings the terminal window to the foreground."""
         if project_path not in self.sessions:
-            return False, "Keine aktive Session"
+            return False, "No active session"
 
         session = self.sessions[project_path]
 
         if self.platform == "windows":
-            # Windows: Keine einfache Möglichkeit ohne zusätzliche Bibliotheken
-            return False, "Fenster-Fokussierung auf Windows nicht unterstützt"
+            # Windows: No simple way without additional libraries
+            return False, "Window focus not supported on Windows"
 
         if self.platform == "macos":
-            # macOS: Terminal aktivieren
+            # macOS: Activate terminal
             try:
                 subprocess.run(  # nosec B603 B607 - trusted osascript command
                     ["osascript", "-e", 'tell application "Terminal" to activate'],
                     check=True,
                     capture_output=True,
                 )
-                return True, "Terminal aktiviert"
+                return True, "Terminal activated"
             except subprocess.CalledProcessError:
-                return False, "Fenster konnte nicht aktiviert werden"
+                return False, "Window could not be activated"
 
-        # Linux: wmctrl oder xdotool
+        # Linux: wmctrl or xdotool
 
-        # Versuche Window ID zu aktualisieren falls nicht vorhanden
+        # Try to update window ID if not present
         if not session.window_id:
             window_id = self._find_window_by_pid(session.terminal_pid)
             if window_id:
@@ -427,27 +437,27 @@ class ProcessManager:
                 subprocess.run(  # nosec B603 B607 - trusted wmctrl command
                     ["wmctrl", "-i", "-a", session.window_id], check=True, capture_output=True
                 )
-                return True, "Fenster aktiviert"
+                return True, "Window activated"
             except subprocess.CalledProcessError:
                 pass
             except FileNotFoundError:
                 pass
 
-        # Fallback: Versuche über xdotool
+        # Fallback: Try via xdotool
         try:
             subprocess.run(  # nosec B603 B607 - trusted xdotool command
                 ["xdotool", "search", "--pid", str(session.terminal_pid), "windowactivate"],
                 check=True,
                 capture_output=True,
             )
-            return True, "Fenster aktiviert"
+            return True, "Window activated"
         except subprocess.CalledProcessError:
-            return False, "Fenster konnte nicht gefunden werden"
+            return False, "Window could not be found"
         except FileNotFoundError:
-            return False, "wmctrl/xdotool nicht installiert"
+            return False, "wmctrl/xdotool not installed"
 
     def _find_window_by_title(self, title: str) -> str | None:
-        """Findet eine Window ID anhand des Titels (nur Linux)"""
+        """Finds a window ID by title (Linux only)."""
         if self.platform != "linux":
             return None
 
@@ -463,7 +473,7 @@ class ProcessManager:
         return None
 
     def _find_window_by_pid(self, pid: int) -> str | None:
-        """Findet eine Window ID anhand der PID (nur Linux)"""
+        """Finds a window ID by PID (Linux only)."""
         if self.platform != "linux":
             return None
 
@@ -480,14 +490,14 @@ class ProcessManager:
         return None
 
     def get_all_status(self) -> dict[str, bool]:
-        """Gibt den Status aller bekannten Sessions zurück"""
+        """Returns the status of all known sessions."""
         status = {}
         for path in list(self.sessions.keys()):
             status[path] = self.is_running(path)
         return status
 
     def cleanup_dead_sessions(self):
-        """Entfernt beendete Sessions aus der Liste"""
+        """Removes ended sessions from the list."""
         dead = [path for path in self.sessions if not self.is_running(path)]
         for path in dead:
             del self.sessions[path]

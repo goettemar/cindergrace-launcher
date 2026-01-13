@@ -1,7 +1,7 @@
 """Cindergrace Launcher - LLM CLI Session Manager.
 
-PySide6/Qt6-basierte GUI zur Verwaltung von LLM CLI Sessions.
-Unterstützt Claude, Codex, Gemini und andere konfigurierbare Provider.
+PySide6/Qt6-based GUI for managing LLM CLI sessions.
+Supports Claude, Codex, Gemini and other configurable providers.
 
 Cross-Platform: Windows, macOS, Linux
 """

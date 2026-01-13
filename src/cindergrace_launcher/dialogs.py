@@ -1,6 +1,6 @@
-"""
-Dialog-Klassen für Cindergrace Launcher (PySide6 Version)
-Ausgelagert aus cockpit.py für bessere Wartbarkeit
+"""Dialog classes for Cindergrace Launcher (PySide6 version).
+
+Separated from cockpit.py for better maintainability.
 """
 
 import os
@@ -26,22 +26,22 @@ from PySide6.QtWidgets import (
 )
 
 from .config import Config, Project
+from .i18n import LANGUAGES, get_language, set_language, tr
 from .process_manager import validate_command
 from .providers import LLMProvider
 
 
 def resolve_cloud_path(path: str) -> str:
-    """
-    Konvertiert Cloud-URLs in lokale GVFS-Pfade.
+    """Converts cloud URLs to local GVFS paths.
 
-    Unterstützt:
+    Supports:
     - google-drive://user@gmail.com/driveId/folderId
-    - Bereits korrekte Pfade werden unverändert zurückgegeben
+    - Already correct paths are returned unchanged
     """
     if not path:
         return path
 
-    # Google Drive URL konvertieren
+    # Convert Google Drive URL
     if path.startswith("google-drive://"):
         # Format: google-drive://user@domain/driveId/folderId
         # GVFS: /run/user/UID/gvfs/google-drive:host=domain,user=user/driveId/folderId
@@ -50,18 +50,18 @@ def resolve_cloud_path(path: str) -> str:
 
             parsed = urlparse(path)
 
-            # User und Host extrahieren (user@domain format)
+            # Extract user and host (user@domain format)
             if "@" in parsed.netloc:
                 user, host = parsed.netloc.rsplit("@", 1)
             else:
-                return path  # Unbekanntes Format
+                return path  # Unknown format
 
-            # GVFS-Pfad bauen
+            # Build GVFS path
             gvfs_base = f"/run/user/{os.getuid()}/gvfs"
             gvfs_mount = f"google-drive:host={host},user={user}"
             gvfs_path = f"{gvfs_base}/{gvfs_mount}{parsed.path}"
 
-            # Prüfen ob Pfad existiert
+            # Check if path exists
             if Path(gvfs_path).exists():
                 return gvfs_path
         except (ValueError, OSError):
@@ -70,7 +70,7 @@ def resolve_cloud_path(path: str) -> str:
     return path
 
 
-# Gemeinsames Stylesheet für Dialoge
+# Shared stylesheet for dialogs
 DIALOG_STYLE = """
 QDialog {
     background-color: #1a1a2e;
@@ -198,7 +198,7 @@ QScrollArea > QWidget > QWidget {
 
 
 class ProjectDialog(QDialog):
-    """Dialog zum Hinzufügen/Bearbeiten eines Projekts"""
+    """Dialog for adding/editing a project."""
 
     def __init__(
         self,
@@ -207,13 +207,14 @@ class ProjectDialog(QDialog):
         project: Project | None = None,
         on_save: Callable[[Project], None] | None = None,
     ):
+        """Initializes the project dialog."""
         super().__init__(parent)
         self.config = config
         self.project = project
         self.on_save = on_save
         self.is_edit = project is not None
 
-        self.setWindowTitle("Projekt bearbeiten" if self.is_edit else "Neues Projekt")
+        self.setWindowTitle(tr("dialog_edit_project") if self.is_edit else tr("dialog_new_project"))
         self.setFixedSize(500, 580)
         self.setModal(True)
         self.setStyleSheet(DIALOG_STYLE)
@@ -225,7 +226,7 @@ class ProjectDialog(QDialog):
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        # Scrollbereich
+        # Scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -235,30 +236,30 @@ class ProjectDialog(QDialog):
         scroll_layout.setSpacing(15)
 
         # === Name ===
-        name_group = QGroupBox("Projektname")
+        name_group = QGroupBox(tr("project_name"))
         name_layout = QVBoxLayout(name_group)
 
         self.name_entry = QLineEdit()
-        self.name_entry.setPlaceholderText("Name des Projekts")
+        self.name_entry.setPlaceholderText(tr("project_name_placeholder"))
         if self.project:
             self.name_entry.setText(self.project.name)
         name_layout.addWidget(self.name_entry)
 
         scroll_layout.addWidget(name_group)
 
-        # === Pfad ===
-        path_group = QGroupBox("Projektordner")
+        # === Path ===
+        path_group = QGroupBox(tr("project_folder"))
         path_layout = QVBoxLayout(path_group)
 
-        # Root-Info
-        root_label = QLabel(f"Projekt-Root: {self.config.project_root}")
+        # Root info
+        root_label = QLabel(tr("project_root").format(path=self.config.project_root))
         root_label.setStyleSheet("color: #888; font-size: 11px;")
         path_layout.addWidget(root_label)
 
-        # Pfad-Zeile
+        # Path row
         path_row = QHBoxLayout()
         self.path_entry = QLineEdit()
-        self.path_entry.setPlaceholderText("Ordnername (relativ zum Root)")
+        self.path_entry.setPlaceholderText(tr("folder_placeholder"))
         if self.project:
             self.path_entry.setText(self.project.relative_path)
         path_row.addWidget(self.path_entry)
@@ -271,36 +272,36 @@ class ProjectDialog(QDialog):
         path_layout.addLayout(path_row)
         scroll_layout.addWidget(path_group)
 
-        # === Kategorie ===
-        cat_group = QGroupBox("Kategorie (optional)")
+        # === Category ===
+        cat_group = QGroupBox(tr("category_optional"))
         cat_layout = QVBoxLayout(cat_group)
 
         self.cat_entry = QLineEdit()
-        self.cat_entry.setPlaceholderText("z.B. Python, Web, Tools...")
+        self.cat_entry.setPlaceholderText(tr("category_placeholder"))
         if self.project and self.project.category:
             self.cat_entry.setText(self.project.category)
         cat_layout.addWidget(self.cat_entry)
 
         scroll_layout.addWidget(cat_group)
 
-        # === Start-Befehl ===
-        start_group = QGroupBox("Start-Befehl (optional)")
+        # === Start command ===
+        start_group = QGroupBox(tr("start_command_optional"))
         start_layout = QVBoxLayout(start_group)
 
         self.start_entry = QLineEdit()
-        self.start_entry.setPlaceholderText("Eigener Startbefehl...")
+        self.start_entry.setPlaceholderText(tr("start_command_placeholder"))
         if self.project and self.project.custom_start_command:
             self.start_entry.setText(self.project.custom_start_command)
         start_layout.addWidget(self.start_entry)
 
-        hint_label = QLabel(f"Leer lassen für: {self.config.default_start_command}")
+        hint_label = QLabel(tr("start_command_hint").format(command=self.config.default_start_command))
         hint_label.setStyleSheet("color: #888; font-size: 11px;")
         start_layout.addWidget(hint_label)
 
         scroll_layout.addWidget(start_group)
 
         # === Provider ===
-        provider_group = QGroupBox("Standard-Provider")
+        provider_group = QGroupBox(tr("default_provider"))
         provider_layout = QVBoxLayout(provider_group)
 
         self.provider_dropdown = QComboBox()
@@ -331,11 +332,11 @@ class ProjectDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        cancel_btn = QPushButton("Abbrechen")
+        cancel_btn = QPushButton(tr("cancel"))
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
 
-        save_btn = QPushButton("Speichern")
+        save_btn = QPushButton(tr("save"))
         save_btn.setObjectName("primary")
         save_btn.clicked.connect(self._on_save)
         button_layout.addWidget(save_btn)
@@ -350,11 +351,11 @@ class ProjectDialog(QDialog):
         )
 
         folder = QFileDialog.getExistingDirectory(
-            self, "Projektordner auswählen", start_dir, QFileDialog.Option.ShowDirsOnly
+            self, "Select project folder", start_dir, QFileDialog.Option.ShowDirsOnly
         )
 
         if folder:
-            # Relativen Pfad berechnen
+            # Calculate relative path
             if self.config.project_root and folder.startswith(self.config.project_root):
                 relative = os.path.relpath(folder, self.config.project_root)
                 self.path_entry.setText(relative)
@@ -364,22 +365,22 @@ class ProjectDialog(QDialog):
     def _on_save(self):
         name = self.name_entry.text().strip()
         relative_path = self.path_entry.text().strip()
-        category = self.cat_entry.text().strip() or "Allgemein"
+        category = self.cat_entry.text().strip() or "General"
         start_cmd = self.start_entry.text().strip()
 
         if not name:
-            QMessageBox.warning(self, "Fehler", "Bitte einen Namen eingeben")
+            QMessageBox.warning(self, tr("error"), tr("error_name_required"))
             return
 
         if not relative_path:
-            QMessageBox.warning(self, "Fehler", "Bitte einen Ordner auswählen")
+            QMessageBox.warning(self, tr("error"), tr("error_folder_required"))
             return
 
-        # SECURITY: Start-Befehl validieren
+        # SECURITY: Validate start command
         if start_cmd:
             is_valid, error = validate_command(start_cmd)
             if not is_valid:
-                QMessageBox.warning(self, "Fehler", f"Ungültiger Start-Befehl: {error}")
+                QMessageBox.warning(self, tr("error"), tr("error_invalid_command").format(error=error))
                 return
 
         selected_idx = self.provider_dropdown.currentIndex()
@@ -407,7 +408,7 @@ class ProjectDialog(QDialog):
 
 
 class ProviderDialog(QDialog):
-    """Dialog zum Hinzufügen/Bearbeiten eines Providers"""
+    """Dialog for adding/editing a provider."""
 
     def __init__(
         self,
@@ -415,12 +416,13 @@ class ProviderDialog(QDialog):
         provider: LLMProvider | None = None,
         on_save: Callable[[LLMProvider], None] | None = None,
     ):
+        """Initializes the provider dialog."""
         super().__init__(parent)
         self.provider = provider
         self.on_save = on_save
         self.is_edit = provider is not None
 
-        self.setWindowTitle("Provider bearbeiten" if self.is_edit else "Neuer Provider")
+        self.setWindowTitle(tr("dialog_edit_provider") if self.is_edit else tr("dialog_new_provider"))
         self.setFixedSize(450, 550)
         self.setModal(True)
         self.setStyleSheet(DIALOG_STYLE)
@@ -432,7 +434,7 @@ class ProviderDialog(QDialog):
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        # Scrollbereich
+        # Scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -441,36 +443,36 @@ class ProviderDialog(QDialog):
         scroll_layout = QVBoxLayout(scroll_widget)
         scroll_layout.setSpacing(15)
 
-        # === Grundeinstellungen ===
-        basic_group = QGroupBox("Grundeinstellungen")
+        # === Basic settings ===
+        basic_group = QGroupBox(tr("basic_settings"))
         basic_layout = QGridLayout(basic_group)
         basic_layout.setSpacing(10)
 
-        basic_layout.addWidget(QLabel("ID (eindeutig):"), 0, 0)
+        basic_layout.addWidget(QLabel(tr("id_unique")), 0, 0)
         self.id_entry = QLineEdit()
         self.id_entry.setText(self.provider.id if self.provider else "")
         if self.is_edit:
             self.id_entry.setEnabled(False)
         basic_layout.addWidget(self.id_entry, 0, 1)
 
-        basic_layout.addWidget(QLabel("Anzeigename:"), 1, 0)
+        basic_layout.addWidget(QLabel(tr("display_name")), 1, 0)
         self.name_entry = QLineEdit()
         self.name_entry.setText(self.provider.name if self.provider else "")
         basic_layout.addWidget(self.name_entry, 1, 1)
 
         scroll_layout.addWidget(basic_group)
 
-        # === Befehl ===
-        cmd_group = QGroupBox("Befehl")
+        # === Command ===
+        cmd_group = QGroupBox(tr("command_section"))
         cmd_layout = QGridLayout(cmd_group)
         cmd_layout.setSpacing(10)
 
-        cmd_layout.addWidget(QLabel("CLI-Befehl:"), 0, 0)
+        cmd_layout.addWidget(QLabel(tr("cli_command")), 0, 0)
         self.cmd_entry = QLineEdit()
         self.cmd_entry.setText(self.provider.command if self.provider else "")
         cmd_layout.addWidget(self.cmd_entry, 0, 1)
 
-        cmd_layout.addWidget(QLabel("Skip-Permissions Flag:"), 1, 0)
+        cmd_layout.addWidget(QLabel(tr("skip_permissions_flag")), 1, 0)
         self.skip_flag_entry = QLineEdit()
         self.skip_flag_entry.setText(
             self.provider.skip_permissions_flag if self.provider else ""
@@ -479,17 +481,17 @@ class ProviderDialog(QDialog):
 
         scroll_layout.addWidget(cmd_group)
 
-        # === Darstellung ===
-        ui_group = QGroupBox("Darstellung")
+        # === Appearance ===
+        ui_group = QGroupBox(tr("appearance"))
         ui_layout = QGridLayout(ui_group)
         ui_layout.setSpacing(10)
 
-        ui_layout.addWidget(QLabel("Icon-Name:"), 0, 0)
+        ui_layout.addWidget(QLabel(tr("icon_name")), 0, 0)
         self.icon_entry = QLineEdit()
         self.icon_entry.setText(self.provider.icon if self.provider else "🤖")
         ui_layout.addWidget(self.icon_entry, 0, 1)
 
-        ui_layout.addWidget(QLabel("CSS Farbe:"), 1, 0)
+        ui_layout.addWidget(QLabel(tr("css_color")), 1, 0)
         self.color_entry = QLineEdit()
         self.color_entry.setText(self.provider.color if self.provider else "#666666")
         ui_layout.addWidget(self.color_entry, 1, 1)
@@ -497,10 +499,10 @@ class ProviderDialog(QDialog):
         scroll_layout.addWidget(ui_group)
 
         # === Status ===
-        status_group = QGroupBox("Status")
+        status_group = QGroupBox(tr("status"))
         status_layout = QVBoxLayout(status_group)
 
-        self.enabled_switch = QCheckBox("Aktiviert")
+        self.enabled_switch = QCheckBox(tr("enabled"))
         self.enabled_switch.setChecked(self.provider.enabled if self.provider else True)
         status_layout.addWidget(self.enabled_switch)
 
@@ -516,11 +518,11 @@ class ProviderDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        cancel_btn = QPushButton("Abbrechen")
+        cancel_btn = QPushButton(tr("cancel"))
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
 
-        save_btn = QPushButton("Speichern")
+        save_btn = QPushButton(tr("save"))
         save_btn.setObjectName("primary")
         save_btn.clicked.connect(self._on_save)
         button_layout.addWidget(save_btn)
@@ -533,26 +535,26 @@ class ProviderDialog(QDialog):
         command = self.cmd_entry.text().strip()
 
         if not provider_id:
-            QMessageBox.warning(self, "Fehler", "Bitte eine ID eingeben")
+            QMessageBox.warning(self, tr("error"), tr("error_id_required"))
             return
         if not name:
-            QMessageBox.warning(self, "Fehler", "Bitte einen Namen eingeben")
+            QMessageBox.warning(self, tr("error"), tr("error_name_required_provider"))
             return
         if not command:
-            QMessageBox.warning(self, "Fehler", "Bitte einen Befehl eingeben")
+            QMessageBox.warning(self, tr("error"), tr("error_command_required"))
             return
 
-        # SECURITY: Befehle validieren
+        # SECURITY: Validate commands
         is_valid, error = validate_command(command)
         if not is_valid:
-            QMessageBox.warning(self, "Fehler", f"Ungültiger Befehl: {error}")
+            QMessageBox.warning(self, tr("error"), tr("error_invalid_cmd").format(error=error))
             return
 
         skip_flag = self.skip_flag_entry.text().strip()
         if skip_flag:
             is_valid, error = validate_command(skip_flag)
             if not is_valid:
-                QMessageBox.warning(self, "Fehler", f"Ungültiges Flag: {error}")
+                QMessageBox.warning(self, tr("error"), tr("error_invalid_flag").format(error=error))
                 return
 
         new_provider = LLMProvider(
@@ -572,7 +574,7 @@ class ProviderDialog(QDialog):
 
 
 class SettingsDialog(QDialog):
-    """Einstellungs-Dialog"""
+    """Settings dialog."""
 
     def __init__(
         self,
@@ -582,13 +584,14 @@ class SettingsDialog(QDialog):
         on_export: Callable[[], None] | None = None,
         on_import: Callable[[], None] | None = None,
     ):
+        """Initializes the settings dialog."""
         super().__init__(parent)
         self.config = config
         self.on_save = on_save
         self.on_export_callback = on_export
         self.on_import_callback = on_import
 
-        self.setWindowTitle("Einstellungen")
+        self.setWindowTitle(tr("settings_title"))
         self.setFixedSize(600, 650)
         self.setModal(True)
         self.setStyleSheet(DIALOG_STYLE)
@@ -600,7 +603,7 @@ class SettingsDialog(QDialog):
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        # Scrollbereich
+        # Scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -609,12 +612,12 @@ class SettingsDialog(QDialog):
         scroll_layout = QVBoxLayout(scroll_widget)
         scroll_layout.setSpacing(15)
 
-        # === Pfade ===
-        paths_group = QGroupBox("Pfade")
+        # === Paths ===
+        paths_group = QGroupBox(tr("paths"))
         paths_layout = QGridLayout(paths_group)
         paths_layout.setSpacing(10)
 
-        paths_layout.addWidget(QLabel("Projekt-Root:"), 0, 0)
+        paths_layout.addWidget(QLabel(tr("project_root_label")), 0, 0)
         self.root_entry = QLineEdit()
         self.root_entry.setText(self.config.project_root)
         paths_layout.addWidget(self.root_entry, 0, 1)
@@ -624,10 +627,10 @@ class SettingsDialog(QDialog):
         root_browse.clicked.connect(lambda: self._browse_folder(self.root_entry))
         paths_layout.addWidget(root_browse, 0, 2)
 
-        paths_layout.addWidget(QLabel("Sync-Ordner:"), 1, 0)
+        paths_layout.addWidget(QLabel(tr("sync_folder")), 1, 0)
         self.sync_entry = QLineEdit()
         self.sync_entry.setText(self.config.sync_path)
-        self.sync_entry.setPlaceholderText("Google Drive, Dropbox etc.")
+        self.sync_entry.setPlaceholderText(tr("sync_folder_placeholder"))
         paths_layout.addWidget(self.sync_entry, 1, 1)
 
         sync_browse = QPushButton("📁")
@@ -638,16 +641,16 @@ class SettingsDialog(QDialog):
         scroll_layout.addWidget(paths_group)
 
         # === Terminal ===
-        term_group = QGroupBox("Terminal")
+        term_group = QGroupBox(tr("terminal"))
         term_layout = QGridLayout(term_group)
         term_layout.setSpacing(10)
 
-        term_layout.addWidget(QLabel("Terminal-Befehl:"), 0, 0)
+        term_layout.addWidget(QLabel(tr("terminal_command")), 0, 0)
         self.term_entry = QLineEdit()
         self.term_entry.setText(self.config.terminal_command)
         term_layout.addWidget(self.term_entry, 0, 1)
 
-        term_layout.addWidget(QLabel("Standard Start-Befehl:"), 1, 0)
+        term_layout.addWidget(QLabel(tr("default_start_command")), 1, 0)
         self.start_entry = QLineEdit()
         self.start_entry.setText(self.config.default_start_command)
         term_layout.addWidget(self.start_entry, 1, 1)
@@ -655,23 +658,23 @@ class SettingsDialog(QDialog):
         scroll_layout.addWidget(term_group)
 
         # === Sync ===
-        sync_group = QGroupBox("Sync-Einstellungen")
+        sync_group = QGroupBox(tr("sync_settings"))
         sync_layout = QVBoxLayout(sync_group)
 
-        # Passwort
+        # Password
         pw_layout = QHBoxLayout()
-        pw_layout.addWidget(QLabel("Sync-Passwort:"))
+        pw_layout.addWidget(QLabel(tr("sync_password")))
         self.password_entry = QLineEdit()
         self.password_entry.setEchoMode(QLineEdit.EchoMode.Password)
-        self.password_entry.setPlaceholderText("Verschlüsselungs-Passwort")
+        self.password_entry.setPlaceholderText(tr("password_placeholder"))
 
-        # Passwort NICHT anzeigen (Sicherheit) - nur Placeholder wenn gesetzt
+        # Do NOT show password (security) - only placeholder if set
         try:
             from .config import get_sync_password
 
             current_pw = get_sync_password()
             if current_pw:
-                self.password_entry.setPlaceholderText("••••••••  (bereits gesetzt)")
+                self.password_entry.setPlaceholderText("••••••••  " + tr("password_already_set"))
         except (ImportError, OSError, KeyError, TypeError, ValueError):
             pass
 
@@ -682,23 +685,45 @@ class SettingsDialog(QDialog):
         sync_buttons = QHBoxLayout()
         sync_buttons.addStretch()
 
-        export_btn = QPushButton("Exportieren")
+        export_btn = QPushButton(tr("export"))
         export_btn.setObjectName("primary")
         export_btn.clicked.connect(self._on_export)
         sync_buttons.addWidget(export_btn)
 
-        import_btn = QPushButton("Importieren")
+        import_btn = QPushButton(tr("import"))
         import_btn.clicked.connect(self._on_import)
         sync_buttons.addWidget(import_btn)
 
         sync_layout.addLayout(sync_buttons)
         scroll_layout.addWidget(sync_group)
 
-        # === Provider-Verwaltung ===
-        provider_group = QGroupBox("LLM Provider")
+        # === Language ===
+        lang_group = QGroupBox(tr("language"))
+        lang_layout = QGridLayout(lang_group)
+        lang_layout.setSpacing(10)
+
+        lang_layout.addWidget(QLabel(tr("language_label")), 0, 0)
+        self.lang_combo = QComboBox()
+        self.lang_codes = list(LANGUAGES.keys())
+        for code in self.lang_codes:
+            self.lang_combo.addItem(LANGUAGES[code])
+        # Set current language
+        current_lang = get_language()
+        if current_lang in self.lang_codes:
+            self.lang_combo.setCurrentIndex(self.lang_codes.index(current_lang))
+        lang_layout.addWidget(self.lang_combo, 0, 1)
+
+        hint_label = QLabel(tr("language_restart_hint"))
+        hint_label.setStyleSheet("color: #888; font-size: 11px;")
+        lang_layout.addWidget(hint_label, 1, 0, 1, 2)
+
+        scroll_layout.addWidget(lang_group)
+
+        # === Provider management ===
+        provider_group = QGroupBox(tr("llm_providers"))
         provider_layout = QVBoxLayout(provider_group)
 
-        # Provider-Liste (scrollbar)
+        # Provider list (scrollable)
         self.provider_list_widget = QWidget()
         self.provider_list_layout = QVBoxLayout(self.provider_list_widget)
         self.provider_list_layout.setSpacing(5)
@@ -708,8 +733,8 @@ class SettingsDialog(QDialog):
 
         provider_layout.addWidget(self.provider_list_widget)
 
-        # Button zum Hinzufuegen
-        add_provider_btn = QPushButton("+ Provider hinzufuegen")
+        # Button to add
+        add_provider_btn = QPushButton(tr("add_provider"))
         add_provider_btn.clicked.connect(self._on_add_provider)
         provider_layout.addWidget(add_provider_btn)
 
@@ -725,11 +750,11 @@ class SettingsDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        cancel_btn = QPushButton("Abbrechen")
+        cancel_btn = QPushButton(tr("cancel"))
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
 
-        save_btn = QPushButton("Speichern")
+        save_btn = QPushButton(tr("save"))
         save_btn.setObjectName("primary")
         save_btn.clicked.connect(self._on_close)
         button_layout.addWidget(save_btn)
@@ -739,7 +764,7 @@ class SettingsDialog(QDialog):
     def _browse_folder(self, target_entry: QLineEdit):
         current = target_entry.text() or str(Path.home())
         folder = QFileDialog.getExistingDirectory(
-            self, "Ordner auswählen", current, QFileDialog.Option.ShowDirsOnly
+            self, "Select folder", current, QFileDialog.Option.ShowDirsOnly
         )
         if folder:
             target_entry.setText(folder)
@@ -751,16 +776,23 @@ class SettingsDialog(QDialog):
             set_sync_password = None
 
         self.config.local.project_root = self.root_entry.text().strip()
-        # Cloud-URLs automatisch in GVFS-Pfade konvertieren
+        # Automatically convert cloud URLs to GVFS paths
         sync_path = resolve_cloud_path(self.sync_entry.text().strip())
         self.config.local.sync_path = sync_path
-        # Feld aktualisieren falls konvertiert
+        # Update field if converted
         if sync_path != self.sync_entry.text().strip():
             self.sync_entry.setText(sync_path)
         self.config.local.terminal_command = self.term_entry.text().strip()
         self.config.local.default_start_command = self.start_entry.text().strip()
 
-        # Passwort nur speichern wenn neu eingegeben (nicht leer = Placeholder)
+        # Save language setting
+        lang_idx = self.lang_combo.currentIndex()
+        if 0 <= lang_idx < len(self.lang_codes):
+            new_lang = self.lang_codes[lang_idx]
+            self.config.local.language = new_lang
+            set_language(new_lang)
+
+        # Only save password if newly entered (not empty = placeholder)
         password = self.password_entry.text()
         if password and password.strip() and set_sync_password:  # type: ignore[truthy-function]
             try:
@@ -786,86 +818,86 @@ class SettingsDialog(QDialog):
         self.accept()
 
     def _refresh_provider_list(self):
-        """Aktualisiert die Provider-Liste"""
-        # Alte Widgets entfernen
+        """Refreshes the provider list."""
+        # Remove old widgets
         while self.provider_list_layout.count():
             child = self.provider_list_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
 
-        # Provider hinzufuegen
+        # Add providers
         for provider in self.config.providers:
             row = QWidget()
             row_layout = QHBoxLayout(row)
             row_layout.setContentsMargins(0, 2, 0, 2)
             row_layout.setSpacing(6)
 
-            # Status-Indikator (farbiger Punkt)
+            # Status indicator (colored dot)
             status_label = QLabel("●" if provider.enabled else "○")
             status_label.setStyleSheet(f"color: {provider.color}; font-size: 12px;")
             status_label.setFixedWidth(16)
             row_layout.addWidget(status_label)
 
-            # Nur Name (ohne Icon-String)
+            # Name only (without icon string)
             name_label = QLabel(provider.name)
             name_label.setStyleSheet("color: #e0e0e0;")
             row_layout.addWidget(name_label, 1)
 
-            # Bearbeiten-Button
+            # Edit button
             edit_btn = QPushButton("✏")
             edit_btn.setFixedSize(26, 26)
-            edit_btn.setToolTip("Bearbeiten")
+            edit_btn.setToolTip(tr("edit"))
             edit_btn.clicked.connect(lambda checked, p=provider: self._on_edit_provider(p))
             row_layout.addWidget(edit_btn)
 
-            # Loeschen-Button
+            # Delete button
             del_btn = QPushButton("🗑")
             del_btn.setFixedSize(26, 26)
-            del_btn.setToolTip("Loeschen")
+            del_btn.setToolTip(tr("delete"))
             del_btn.clicked.connect(lambda checked, p=provider: self._on_delete_provider(p))
             row_layout.addWidget(del_btn)
 
             self.provider_list_layout.addWidget(row)
 
     def _on_add_provider(self):
-        """Neuen Provider hinzufuegen"""
+        """Adds a new provider."""
 
         def save_new_provider(new_provider: LLMProvider):
             try:
                 self.config.add_provider(new_provider)
                 self._refresh_provider_list()
             except ValueError as e:
-                QMessageBox.warning(self, "Fehler", str(e))
+                QMessageBox.warning(self, tr("error"), str(e))
 
         dialog = ProviderDialog(self, provider=None, on_save=save_new_provider)
         dialog.exec()
 
     def _on_edit_provider(self, provider: LLMProvider):
-        """Provider bearbeiten"""
+        """Edits the provider."""
 
         def save_updated_provider(updated: LLMProvider):
             try:
                 self.config.update_provider(provider.id, updated)
                 self._refresh_provider_list()
             except ValueError as e:
-                QMessageBox.warning(self, "Fehler", str(e))
+                QMessageBox.warning(self, tr("error"), str(e))
 
         dialog = ProviderDialog(self, provider=provider, on_save=save_updated_provider)
         dialog.exec()
 
     def _on_delete_provider(self, provider: LLMProvider):
-        """Provider loeschen"""
-        # Mindestens ein Provider muss bleiben
+        """Deletes the provider."""
+        # At least one provider must remain
         if len(self.config.providers) <= 1:
             QMessageBox.warning(
-                self, "Nicht moeglich", "Es muss mindestens ein Provider konfiguriert sein."
+                self, tr("not_possible"), tr("min_provider_error")
             )
             return
 
         reply = QMessageBox.question(
             self,
-            "Provider loeschen",
-            f"Provider '{provider.name}' wirklich loeschen?",
+            tr("delete_provider_title"),
+            tr("delete_provider_confirm").format(name=provider.name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )

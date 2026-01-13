@@ -1,6 +1,6 @@
-"""
-Sync-Modul für Cindergrace Launcher
-AES-verschlüsselte Synchronisation von Projektdaten
+"""Sync module for Cindergrace Launcher.
+
+AES-encrypted synchronization of project data.
 """
 
 import json
@@ -19,7 +19,7 @@ KDF_ITERATIONS = 100000
 
 
 def derive_key(password: str, salt: bytes) -> bytes:
-    """Leitet einen 256-bit AES-Key vom Passwort ab (PBKDF2HMAC)"""
+    """Derives a 256-bit AES key from password using PBKDF2HMAC."""
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
@@ -30,18 +30,18 @@ def derive_key(password: str, salt: bytes) -> bytes:
 
 
 def encrypt_data(data: dict, password: str) -> bytes:
-    """Verschlüsselt Daten mit AES-GCM"""
-    # Zufälliges Salt und Nonce generieren
+    """Encrypts data using AES-GCM."""
+    # Generate random salt and nonce
     salt = secrets.token_bytes(SALT_SIZE)
     nonce = secrets.token_bytes(NONCE_SIZE)
 
-    # Key ableiten
+    # Derive key
     key = derive_key(password, salt)
 
-    # Daten zu JSON serialisieren
+    # Serialize data to JSON
     plaintext = json.dumps(data, ensure_ascii=False).encode("utf-8")
 
-    # Verschlüsseln mit AES-GCM (authentifizierte Verschlüsselung)
+    # Encrypt with AES-GCM (authenticated encryption)
     aesgcm = AESGCM(key)
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)
 
@@ -50,56 +50,58 @@ def encrypt_data(data: dict, password: str) -> bytes:
 
 
 def decrypt_data(encrypted: bytes, password: str) -> dict | None:
-    """Entschlüsselt Daten mit AES-GCM"""
-    if len(encrypted) < SALT_SIZE + NONCE_SIZE + 16:  # Mindestens 16 Bytes Ciphertext
+    """Decrypts data using AES-GCM."""
+    if len(encrypted) < SALT_SIZE + NONCE_SIZE + 16:  # Minimum 16 bytes ciphertext
         return None
 
-    # Salt, Nonce und Ciphertext extrahieren
+    # Extract salt, nonce, and ciphertext
     salt = encrypted[:SALT_SIZE]
     nonce = encrypted[SALT_SIZE : SALT_SIZE + NONCE_SIZE]
     ciphertext = encrypted[SALT_SIZE + NONCE_SIZE :]
 
-    # Key ableiten
+    # Derive key
     key = derive_key(password, salt)
 
     try:
-        # Entschlüsseln
+        # Decrypt
         aesgcm = AESGCM(key)
         plaintext = aesgcm.decrypt(nonce, ciphertext, None)
 
-        # JSON parsen
+        # Parse JSON
         return json.loads(plaintext.decode("utf-8"))  # type: ignore[no-any-return]
     except (
-        # Cryptography: Falsches Passwort oder korrupte Daten
-        # InvalidTag wird bei AES-GCM geworfen wenn Authentifizierung fehlschlägt
+        # Cryptography: Wrong password or corrupt data
+        # InvalidTag is raised by AES-GCM when authentication fails
         Exception  # cryptography.exceptions.InvalidTag + json.JSONDecodeError + UnicodeDecodeError
     ):
-        # Hinweis: Wir fangen hier absichtlich breit, da:
-        # - cryptography.exceptions.InvalidTag bei falschem Passwort
-        # - json.JSONDecodeError bei korruptem Plaintext
-        # - UnicodeDecodeError bei korrupten Bytes
-        # Alle bedeuten: Entschlüsselung fehlgeschlagen
+        # Note: We catch broadly here because:
+        # - cryptography.exceptions.InvalidTag on wrong password
+        # - json.JSONDecodeError on corrupt plaintext
+        # - UnicodeDecodeError on corrupt bytes
+        # All mean: decryption failed
         return None
 
 
 @dataclass
 class SyncProject:
-    """Projekt-Daten für Sync (ohne lokale Pfade)"""
+    """Project data for sync (without local paths)."""
 
     name: str
-    relative_path: str  # Relativer Pfad vom project_root
+    relative_path: str  # Relative path from project_root
     description: str = ""
-    category: str = "Allgemein"
+    category: str = "General"
     default_provider: str = "claude"
     custom_start_command: str = ""
     hidden: bool = False
     favorite: bool = False
 
     def to_dict(self) -> dict:
+        """Serializes the sync project to a dictionary."""
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: dict) -> "SyncProject":
+        """Creates a SyncProject from a dictionary."""
         known_fields = {
             "name",
             "relative_path",
@@ -114,7 +116,7 @@ class SyncProject:
         # Defaults für fehlende Felder
         defaults = {
             "description": "",
-            "category": "Allgemein",
+            "category": "General",
             "default_provider": "claude",
             "custom_start_command": "",
             "hidden": False,
@@ -128,44 +130,46 @@ class SyncProject:
 
 @dataclass
 class SyncData:
-    """Container für alle gesynchten Daten"""
+    """Container for all synced data."""
 
-    projects: list  # Liste von SyncProject dicts
+    projects: list  # List of SyncProject dicts
     version: int = 1
 
     def to_dict(self) -> dict:
+        """Serializes sync data to a dictionary."""
         return {"version": self.version, "projects": self.projects}
 
     @classmethod
     def from_dict(cls, data: dict) -> "SyncData":
+        """Creates SyncData from a dictionary."""
         return cls(projects=data.get("projects", []), version=data.get("version", 1))
 
 
 class SyncManager:
-    """Verwaltet Sync-Operationen"""
+    """Manages sync operations."""
 
     def __init__(self, sync_path: str, password: str):
+        """Initializes the SyncManager."""
         self.sync_path = Path(sync_path)
         self.password = password
         self.sync_file = self.sync_path / SYNC_FILENAME
 
     def is_configured(self) -> bool:
-        """Prüft ob Sync konfiguriert ist"""
+        """Checks if sync is configured."""
         return bool(self.sync_path) and bool(self.password)
 
     def _find_sync_file(self) -> Path | None:
-        """
-        Findet die Sync-Datei im Ordner.
+        """Finds the sync file in the folder.
 
-        Prüft zuerst den Standard-Dateinamen, dann sucht nach verschlüsselten
-        Dateien (Fallback für GVFS/Google Drive die Dateinamen ändern).
+        First checks the standard filename, then searches for encrypted
+        files (fallback for GVFS/Google Drive which may change filenames).
         """
-        # Standard-Pfad prüfen
+        # Check standard path
         if self.sync_file.exists():
             return self.sync_file
 
-        # GVFS-Fallback: Alle Dateien durchsuchen und versuchen zu entschlüsseln
-        # Google Drive GVFS nutzt File-IDs statt Dateinamen
+        # GVFS fallback: Search all files and try to decrypt
+        # Google Drive GVFS uses file IDs instead of filenames
         if not self.sync_path.exists():
             return None
 
@@ -173,11 +177,11 @@ class SyncManager:
             for file_path in self.sync_path.iterdir():
                 if not file_path.is_file():
                     continue
-                # Nur Dateien mit passender Größe prüfen (min 44 Bytes: salt+nonce+min ciphertext)
+                # Only check files with suitable size (min 44 bytes: salt+nonce+min ciphertext)
                 try:
                     if file_path.stat().st_size < 44:
                         continue
-                    # Versuchen zu entschlüsseln
+                    # Try to decrypt
                     encrypted = file_path.read_bytes()
                     data = decrypt_data(encrypted, self.password)
                     if data and "projects" in data and "version" in data:
@@ -190,66 +194,66 @@ class SyncManager:
         return None
 
     def sync_file_exists(self) -> bool:
-        """Prüft ob Sync-Datei existiert"""
+        """Checks if sync file exists."""
         return self._find_sync_file() is not None
 
     def export_projects(self, projects: list[SyncProject]) -> bool:
-        """Exportiert Projekte in verschlüsselte Sync-Datei"""
+        """Exports projects to encrypted sync file."""
         if not self.is_configured():
             return False
 
         try:
-            # Sync-Ordner erstellen falls nötig
+            # Create sync folder if needed
             self.sync_path.mkdir(parents=True, exist_ok=True)
 
-            # Daten vorbereiten
+            # Prepare data
             sync_data = SyncData(
                 projects=[p.to_dict() if hasattr(p, "to_dict") else p for p in projects]
             )
 
-            # Verschlüsseln und speichern
+            # Encrypt and save
             encrypted = encrypt_data(sync_data.to_dict(), self.password)
             self.sync_file.write_bytes(encrypted)
 
             return True
         except OSError as e:
-            print(f"Sync-Export Dateifehler: {e}")
+            print(f"Sync export file error: {e}")
             return False
         except (TypeError, ValueError) as e:
-            print(f"Sync-Export Serialisierungsfehler: {e}")
+            print(f"Sync export serialization error: {e}")
             return False
 
     def import_projects(self) -> list[SyncProject] | None:
-        """Importiert Projekte aus verschlüsselter Sync-Datei"""
+        """Imports projects from encrypted sync file."""
         if not self.is_configured():
             return None
 
-        # Sync-Datei finden (unterstützt GVFS-Fallback)
+        # Find sync file (supports GVFS fallback)
         sync_file = self._find_sync_file()
         if not sync_file:
             return None
 
         try:
-            # Lesen und entschlüsseln
+            # Read and decrypt
             encrypted = sync_file.read_bytes()
             data = decrypt_data(encrypted, self.password)
 
             if data is None:
-                return None  # Falsches Passwort
+                return None  # Wrong password
 
             sync_data = SyncData.from_dict(data)
             return [SyncProject.from_dict(p) for p in sync_data.projects]
         except OSError as e:
-            print(f"Sync-Import Dateifehler: {e}")
+            print(f"Sync import file error: {e}")
             return None
         except (KeyError, TypeError, ValueError) as e:
-            print(f"Sync-Import Datenformat-Fehler: {e}")
+            print(f"Sync import data format error: {e}")
             return None
 
     def test_password(self) -> bool:
-        """Testet ob das Passwort korrekt ist"""
+        """Tests if the password is correct."""
         if not self.sync_file_exists():
-            return True  # Keine Datei = Passwort OK (wird neu erstellt)
+            return True  # No file = password OK (will be created)
 
         result = self.import_projects()
         return result is not None

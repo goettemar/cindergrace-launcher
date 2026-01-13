@@ -1,6 +1,6 @@
-"""
-LLM Provider Abstraktionsschicht für LLM Cockpit
-Unterstützt verschiedene LLM CLI Tools - vollständig konfigurierbar
+"""LLM Provider abstraction layer for LLM Cockpit.
+
+Supports various LLM CLI tools - fully configurable.
 """
 
 from dataclasses import dataclass
@@ -9,19 +9,19 @@ from pathlib import Path
 
 @dataclass
 class LLMProvider:
-    """Definition eines LLM CLI Providers - vollständig benutzerkonfigurierbar"""
+    """Definition of an LLM CLI Provider - fully user-configurable."""
 
-    id: str  # Eindeutiger Identifier (z.B. "claude", "aider")
-    name: str  # Anzeigename (z.B. "Claude Code")
-    command: str  # Pfad zum CLI-Tool
+    id: str  # Unique identifier (e.g., "claude", "aider")
+    name: str  # Display name (e.g., "Claude Code")
+    command: str  # Path to CLI tool
     icon: str = "utilities-terminal-symbolic"  # GTK Icon Name
-    color: str = "#808080"  # CSS Farbe für UI
-    default_flags: str = ""  # Standard-Flags (z.B. "--yes")
-    skip_permissions_flag: str = ""  # Flag für "keine Nachfragen"
-    enabled: bool = True  # Provider aktiviert
+    color: str = "#808080"  # CSS color for UI
+    default_flags: str = ""  # Default flags (e.g., "--yes")
+    skip_permissions_flag: str = ""  # Flag for "no prompts"
+    enabled: bool = True  # Provider enabled
 
     def get_full_command(self, skip_permissions: bool = False) -> str:
-        """Gibt den vollständigen Befehl zurück"""
+        """Return the full command string."""
         parts = [self.command]
         if self.default_flags:
             parts.append(self.default_flags)
@@ -30,7 +30,7 @@ class LLMProvider:
         return " ".join(parts)
 
     def to_dict(self) -> dict:
-        """Serialisiert den Provider für JSON-Speicherung"""
+        """Serialize the provider for JSON storage."""
         return {
             "id": self.id,
             "name": self.name,
@@ -44,7 +44,7 @@ class LLMProvider:
 
     @classmethod
     def from_dict(cls, data: dict) -> "LLMProvider":
-        """Erstellt Provider aus Dictionary mit Rückwärtskompatibilität"""
+        """Create a provider from a dictionary with backwards compatibility."""
         known_fields = {
             "id",
             "name",
@@ -60,7 +60,7 @@ class LLMProvider:
 
 
 def get_initial_providers() -> list[LLMProvider]:
-    """Gibt initiale Provider für Erstinstallation zurück"""
+    """Return initial providers for first installation."""
     home = str(Path.home())
 
     return [
