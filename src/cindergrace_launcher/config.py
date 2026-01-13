@@ -4,19 +4,45 @@ Separation between local settings and synced project data.
 """
 
 import json
+import os
+import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from .providers import LLMProvider, get_initial_providers
 from .sync import SyncManager, SyncProject
 
-CONFIG_DIR = Path.home() / ".config" / "cindergrace-launcher"
+
+def _get_config_dir() -> Path:
+    """Get platform-specific config directory.
+
+    - Windows: %APPDATA%/cindergrace-launcher
+    - Linux/macOS: ~/.config/cindergrace-launcher
+    """
+    if sys.platform == "win32":
+        # Windows: Use AppData/Roaming (standard for user config)
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            return Path(appdata) / "cindergrace-launcher"
+        # Fallback if APPDATA not set
+        return Path.home() / "AppData" / "Roaming" / "cindergrace-launcher"
+    else:
+        # Linux/macOS: Use XDG standard
+        xdg_config = os.environ.get("XDG_CONFIG_HOME")
+        if xdg_config:
+            return Path(xdg_config) / "cindergrace-launcher"
+        return Path.home() / ".config" / "cindergrace-launcher"
+
+
+CONFIG_DIR = _get_config_dir()
 LOCAL_CONFIG_FILE = CONFIG_DIR / "local.json"
 
 # Migration: Old config paths
 OLD_CONFIG_DIRS = [
     Path.home() / ".config" / "llm-cockpit",
     Path.home() / ".config" / "claude-cockpit",
+    # Windows: Old non-standard path (before platform-specific fix)
+    Path.home() / ".config" / "cindergrace-launcher",
 ]
 
 
