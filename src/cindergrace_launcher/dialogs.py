@@ -431,7 +431,7 @@ class ProviderDialog(QDialog):
         self.is_edit = provider is not None
 
         self.setWindowTitle(tr("dialog_edit_provider") if self.is_edit else tr("dialog_new_provider"))
-        self.setFixedSize(450, 550)
+        self.setFixedSize(550, 550)
         self.setModal(True)
         self.setStyleSheet(DIALOG_STYLE)
 

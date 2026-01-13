@@ -248,24 +248,25 @@ class ProcessManager:
         self, project_path: str, project_name: str, display_name: str, full_cmd: str
     ):
         """Starts terminal on Windows."""
-        safe_display_name = display_name.replace("'", "").replace('"', "")
-        title = f"{safe_display_name}: {project_name}"
         # Normalize path for Windows (convert forward slashes to backslashes)
         win_path = os.path.normpath(project_path)
 
         if self.terminal_cmd == "wt":
-            # Windows Terminal
-            cmd = ["wt", "--title", title, "-d", win_path, "cmd", "/k", full_cmd]
+            # Windows Terminal - use proper argument list
+            safe_title = f"{display_name}: {project_name}"
+            return subprocess.Popen(  # nosec B603 B607 - trusted terminal command
+                ["wt", "--title", safe_title, "-d", win_path, "cmd", "/k", full_cmd],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,  # type: ignore[attr-defined]
+            )
         else:
-            # Klassisches CMD
-            cmd = ["cmd", "/c", f'start "{title}" /d "{win_path}" cmd /k {full_cmd}']
-
-        return subprocess.Popen(  # nosec B603 B607 - trusted terminal command
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,  # type: ignore[attr-defined]
-        )
+            # Classic CMD - use cwd parameter instead of complex shell string
+            return subprocess.Popen(  # nosec B603 B607 - trusted terminal command
+                ["cmd", "/k", full_cmd],
+                cwd=win_path,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,  # type: ignore[attr-defined]
+            )
 
     def _start_macos_terminal(
         self, project_path: str, project_name: str, display_name: str, full_cmd: str
