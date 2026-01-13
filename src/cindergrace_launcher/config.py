@@ -65,7 +65,10 @@ class Project:
         Protects against path traversal attacks.
         """
         root = Path(project_root).resolve()
-        abs_path = (root / self.relative_path).resolve()
+        # Strip leading slashes to ensure it's treated as relative path
+        # (a leading "/" would make Path treat it as absolute on Windows)
+        relative = self.relative_path.lstrip("/").lstrip("\\")
+        abs_path = (root / relative).resolve()
 
         # SECURITY: Check that path stays within project_root
         try:
