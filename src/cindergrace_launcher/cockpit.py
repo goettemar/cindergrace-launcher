@@ -705,6 +705,8 @@ class LauncherWindow(QMainWindow):
                 self.config = add_project(self.config, saved_project)
                 self.show_toast(tr("project_added").format(name=saved_project.name))
 
+            # Reload config to ensure UI shows current state
+            self.config = load_config()
             self._update_category_filter()
             self._refresh_list()
 
@@ -722,6 +724,8 @@ class LauncherWindow(QMainWindow):
 
             if reply == QMessageBox.Yes:  # type: ignore[attr-defined]
                 self.config = remove_project(self.config, index)
+                # Reload config to ensure UI shows current state
+                self.config = load_config()
                 self._update_category_filter()
                 self._refresh_list()
                 self.show_toast(tr("project_removed"))
@@ -758,7 +762,9 @@ class LauncherWindow(QMainWindow):
                 return
             success, msg = import_from_sync(self.config)
             if success:
-                # Config was already saved by import_from_sync
+                # Reload config to ensure UI shows current state
+                self.config = load_config()
+                self._update_category_filter()
                 self._refresh_list()
                 QMessageBox.information(self, tr("import_title"), msg)
             else:
