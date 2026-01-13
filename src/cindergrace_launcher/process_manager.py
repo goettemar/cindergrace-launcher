@@ -380,9 +380,11 @@ class ProcessManager:
                     ["tasklist", "/FI", f"PID eq {session.terminal_pid}"],
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     creationflags=subprocess.CREATE_NO_WINDOW,  # type: ignore[attr-defined]
                 )
-                return str(session.terminal_pid) in result.stdout
+                return result.stdout and str(session.terminal_pid) in result.stdout
             else:
                 # Unix: Signal 0 sends no signal, only checks if process exists
                 os.kill(session.terminal_pid, 0)
