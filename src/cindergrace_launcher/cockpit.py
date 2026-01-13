@@ -215,10 +215,14 @@ class ProjectWidget(QFrame):
 
         abs_path = self.config.get_project_absolute_path(self.project)
         subtitle = abs_path
+        # Warn if relative_path is empty (misconfigured project)
+        if not self.project.relative_path:
+            subtitle = f"⚠️ {self.config.project_root} (Pfad fehlt!)"
         if self.project.category and self.project.category != "General":
             subtitle += f"  [{self.project.category}]"
         path_label = QLabel(subtitle)
-        path_label.setStyleSheet("color: #666; font-size: 11px;")
+        path_color = "#c00" if not self.project.relative_path else "#666"
+        path_label.setStyleSheet(f"color: {path_color}; font-size: 11px;")
         info_layout.addWidget(path_label)
 
         layout.addLayout(info_layout, stretch=1)
