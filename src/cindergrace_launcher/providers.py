@@ -61,13 +61,14 @@ class LLMProvider:
 
 def get_initial_providers() -> list[LLMProvider]:
     """Return initial providers for first installation."""
-    home = str(Path.home())
+    # Use Path for cross-platform compatibility
+    claude_path = Path.home() / ".npm-global" / "bin" / "claude"
 
     return [
         LLMProvider(
             id="claude",
             name="Claude Code",
-            command=f"{home}/.npm-global/bin/claude",
+            command=str(claude_path),
             icon="utilities-terminal-symbolic",
             color="#E07A5F",
             skip_permissions_flag="--dangerously-skip-permissions",

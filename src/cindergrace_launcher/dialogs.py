@@ -355,12 +355,20 @@ class ProjectDialog(QDialog):
         )
 
         if folder:
-            # Calculate relative path
-            if self.config.project_root and folder.startswith(self.config.project_root):
-                relative = os.path.relpath(folder, self.config.project_root)
-                self.path_entry.setText(relative)
+            # Calculate relative path using Path for cross-platform compatibility
+            folder_path = Path(folder).resolve()
+            root_path = Path(self.config.project_root).resolve() if self.config.project_root else None
+
+            if root_path:
+                try:
+                    # Check if folder is under project_root
+                    relative = folder_path.relative_to(root_path)
+                    self.path_entry.setText(str(relative))
+                except ValueError:
+                    # Folder not under project_root
+                    self.path_entry.setText(folder_path.name)
             else:
-                self.path_entry.setText(Path(folder).name)
+                self.path_entry.setText(folder_path.name)
 
     def _on_save(self):
         name = self.name_entry.text().strip()
