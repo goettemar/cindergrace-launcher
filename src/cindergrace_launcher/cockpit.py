@@ -617,9 +617,11 @@ class LauncherWindow(QMainWindow):
             if sys.platform == "win32":
                 # Normalize path for Windows and quote it
                 win_path = os.path.normpath(abs_path)
+                # Use "start" to open a new window that stays open
+                # The empty "" is required as window title when using start with a path
                 subprocess.Popen(  # nosec B603 B607 - trusted terminal command
-                    ["cmd", "/c", f'cd /d "{win_path}" && {start_cmd}'],
-                    creationflags=subprocess.CREATE_NEW_CONSOLE,
+                    ["cmd", "/c", f'start "" /d "{win_path}" cmd /k "{start_cmd}"'],
+                    creationflags=subprocess.CREATE_NO_WINDOW,
                 )
             else:
                 subprocess.Popen(  # nosec B603 B607 - trusted terminal command
