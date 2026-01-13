@@ -250,13 +250,15 @@ class ProcessManager:
         """Starts terminal on Windows."""
         safe_display_name = display_name.replace("'", "").replace('"', "")
         title = f"{safe_display_name}: {project_name}"
+        # Normalize path for Windows (convert forward slashes to backslashes)
+        win_path = os.path.normpath(project_path)
 
         if self.terminal_cmd == "wt":
             # Windows Terminal
-            cmd = ["wt", "--title", title, "-d", project_path, "cmd", "/k", full_cmd]
+            cmd = ["wt", "--title", title, "-d", win_path, "cmd", "/k", full_cmd]
         else:
             # Klassisches CMD
-            cmd = ["cmd", "/c", f'start "{title}" /d "{project_path}" cmd /k {full_cmd}']
+            cmd = ["cmd", "/c", f'start "{title}" /d "{win_path}" cmd /k {full_cmd}']
 
         return subprocess.Popen(  # nosec B603 B607 - trusted terminal command
             cmd,

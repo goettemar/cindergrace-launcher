@@ -593,16 +593,26 @@ class LauncherWindow(QMainWindow):
             self.show_toast(tr("invalid_start_command").format(error=error))
             return
 
+        # Check if script file exists (cross-platform)
         if start_cmd.startswith("./"):
+            # Unix-style relative path
             check_path = os.path.join(abs_path, start_cmd[2:])
-            if not os.path.exists(check_path):
-                self.show_toast(tr("not_found").format(path=start_cmd))
-                return
+        elif not os.path.isabs(start_cmd) and not start_cmd.startswith(".\\"):
+            # Simple filename like "start.bat" or "start.sh"
+            check_path = os.path.join(abs_path, start_cmd)
+        else:
+            check_path = None
+
+        if check_path and not os.path.exists(check_path):
+            self.show_toast(tr("not_found").format(path=start_cmd))
+            return
 
         try:
             if sys.platform == "win32":
+                # Normalize path for Windows and quote it
+                win_path = os.path.normpath(abs_path)
                 subprocess.Popen(  # nosec B603 B607 - trusted terminal command
-                    ["cmd", "/c", f"cd /d {abs_path} && {start_cmd}"],
+                    ["cmd", "/c", f'cd /d "{win_path}" && {start_cmd}'],
                     creationflags=subprocess.CREATE_NEW_CONSOLE,
                 )
             else:
